@@ -644,6 +644,7 @@ func DistributeForLinux cBaseFolder,cFileName,aOptions
 	ok
 	OSCreateOpenFolder(:linux)
 	cLinuxDir = currentdir()
+	cAppName = substr(cFileName," ","_")
 	cDebDir = ""
 	cRpmDir = ""
 	# Conditionally create package directories
@@ -763,7 +764,6 @@ echo 'You can now run: " + cOutput + "'
 	msg("Prepare files to create the Debian package")
 	chdir(cDebDir)
 	# Get custom output filename for package name
-	cAppName = substr(cFileName," ","_")
 	cPackageName = cAppName
 	for x = len(aOptions) to 1 step -1
 		cOption = lower(trim(aOptions[x]))
@@ -925,9 +925,9 @@ echo 'You can now run: " + cOutput + "'
 			/usr/lib64/*
 			
 			%changelog
-			* #{f4} Developer Name <youraccount@email.com> - 1.0-1
+			* #{f4}
 			- Initial RPM package
-		",2)
+		",3)
 		
 		# Get current date for changelog
 		cCurrentDate = ""
