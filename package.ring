@@ -1,15 +1,15 @@
 aPackageInfo = [
-	:name = "The Ring2EXE Package",
-	:description = "Our Ring2EXE package using the Ring programming language",
+	:name = "The Ring2EXE Plus Package",
+	:description = "Our Ring2EXE Plus package using the Ring programming language",
 	:folder = "ring2exe",
-	:developer = "Mahmoud Fayed",
-	:email = "msfclipper@yahoo.com",
+	:developer = "Mahmoud Fayed, Youssef Saeed",
+	:email = "msfclipper@yahoo.com, youssefelkholey@gmail.com",
 	:license = "MIT License",
-	:version = "1.0.20",
-	:ringversion = "1.23",
+	:version = "1.1.0",
+	:ringversion = "1.24",
 	:versions = 	[
 		[
-			:version = "1.0.20",
+			:version = "1.1.0",
 			:branch = "master"
 		]
 	],
@@ -32,19 +32,12 @@ aPackageInfo = [
 	:ringfolderfiles = 	[
 		"tools/ring2exe/build.bat",
 		"tools/ring2exe/build.sh",
-		"tools/ring2exe/cleartemp.bat",
-		"tools/ring2exe/cleartemp.sh",
-		"tools/ring2exe/cleartemp2.bat",
-		"tools/ring2exe/cleartemp2.sh",
 		"tools/ring2exe/README.md",
 		"tools/ring2exe/ring2exe.ring",
-		"tools/ring2exe/test.ring",
-		"tools/ring2exe/test2.ring",
-		"tools/ring2exe/test3.ring",
-		"tools/folder2qrc/build.bat",
-		"tools/folder2qrc/build.sh",
-		"tools/folder2qrc/folder2qrc.ring",
-		"tools/folder2qrc/README.md"
+		"tools/ring2exe/utils/clicolors.ring",
+		"tools/ring2exe/tests/test.ring",
+		"tools/ring2exe/tests/test2.ring",
+		"tools/ring2exe/tests/test3.ring"
 	],
 	:windowsfiles = 	[
 
@@ -55,15 +48,20 @@ aPackageInfo = [
 	:macosfiles = 	[
 
 	],
+	:freebsdfiles = 	[
+
+	],
 	:windowsringfolderfiles = 	[
-		"bin/folder2qrc.exe",
 		"bin/ring2exe.exe"
 	],
 	:linuxringfolderfiles = 	[
-
+		"bin/ring2exe"
 	],
 	:macosringfolderfiles = 	[
-
+		# "bin/ring2exe"
+	],
+	:freebsdfolderfiles =		[
+		# "bin/ring2exe"
 	],
 	:run = "ring main.ring",
 	:setup = "",

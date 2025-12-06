@@ -1,7 +1,6 @@
-BREW_PREFIX=$(brew --prefix)
+BREW_PREFIX=$(brew --prefix 2>/dev/null)
 
 ring ring2exe.ring ring2exe.ring
-./cleartemp.sh
 
 cp ring2exe $PWD/../../bin/ring2exe 
 

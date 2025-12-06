@@ -1,0 +1,181 @@
+name: Build Ring2EXE Plus
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'tools/ring2exe/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  linux:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Linux executable
+        uses: ysdragon/ring-action@v1.3.0
+        with:
+          file: "tools/ring2exe/ring2exe.ring"
+          output_exe: "true"
+          args: "-static"
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}-ring2exe
+          path: tools/ring2exe/ring2exe
+
+  macos-intel:
+    runs-on: macos-13
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build macOS Intel executable
+        uses: ysdragon/ring-action@v1.3.0
+        with:
+          file: "tools/ring2exe/ring2exe.ring"
+          output_exe: "true"
+
+      - name: Upload macOS Intel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-intel-ring2exe
+          path: tools/ring2exe/ring2exe
+
+  macos-arm:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build macOS ARM executable
+        uses: ysdragon/ring-action@v1.3.0
+        with:
+          file: "tools/ring2exe/ring2exe.ring"
+          output_exe: "true"
+
+      - name: Upload macOS ARM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm-ring2exe
+          path: tools/ring2exe/ring2exe
+
+  windows:
+    strategy:
+      matrix:
+        arch: [x64, x86]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Windows ${{ matrix.arch }} executable
+        uses: ysdragon/ring-action@v1.3.0
+        with:
+          file: "tools/ring2exe/ring2exe.ring"
+          output_exe: "true"
+          args: "-static"
+          arch: ${{ matrix.arch }}
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}-ring2exe
+          path: tools/ring2exe/ring2exe.exe
+
+  update-bin:
+    runs-on: ubuntu-latest
+    needs: [ linux, macos-intel, macos-arm, windows ]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts from this workflow run
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          find artifacts -type f -ls
+
+      - name: Copy artifacts to bin directory
+        run: |
+          mkdir -p bin
+
+          # Linux x64 executable
+          if [ -f "artifacts/linux-x64-ring2exe/ring2exe" ]; then
+            cp "artifacts/linux-x64-ring2exe/ring2exe" "bin/ring2exe"
+            chmod +x "bin/ring2exe"
+            echo "✓ Copied Linux x64 ring2exe"
+          fi
+
+          # Linux ARM64 executable
+          if [ -f "artifacts/linux-arm64-ring2exe/ring2exe" ]; then
+            cp "artifacts/linux-arm64-ring2exe/ring2exe" "bin/ring2exe-linux-arm64"
+            chmod +x "bin/ring2exe-linux-arm64"
+            echo "✓ Copied Linux ARM64 ring2exe"
+          fi
+
+          # Windows x64 executable
+          if [ -f "artifacts/windows-x64-ring2exe/ring2exe.exe" ]; then
+            cp "artifacts/windows-x64-ring2exe/ring2exe.exe" "bin/ring2exe.exe"
+            echo "✓ Copied Windows x64 ring2exe.exe"
+          fi
+
+          # Windows x86 executable
+          if [ -f "artifacts/windows-x86-ring2exe/ring2exe.exe" ]; then
+            cp "artifacts/windows-x86-ring2exe/ring2exe.exe" "bin/ring2exe-x86.exe"
+            echo "✓ Copied Windows x86 ring2exe-x86.exe"
+          fi
+
+          # macOS Intel executable (rename to distinguish)
+          if [ -f "artifacts/macos-intel-ring2exe/ring2exe" ]; then
+            cp "artifacts/macos-intel-ring2exe/ring2exe" "bin/ring2exe-macos-intel"
+            chmod +x "bin/ring2exe-macos-intel"
+            echo "✓ Copied macOS Intel ring2exe"
+          fi
+
+          # macOS ARM executable (rename to distinguish)
+          if [ -f "artifacts/macos-arm-ring2exe/ring2exe" ]; then
+            cp "artifacts/macos-arm-ring2exe/ring2exe" "bin/ring2exe-macos-arm"
+            chmod +x "bin/ring2exe-macos-arm"
+            echo "✓ Copied macOS ARM ring2exe"
+          fi
+
+          echo ""
+          echo "Bin directory contents:"
+          ls -la bin/
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add bin
+          if ! git diff --staged --quiet; then
+            git commit -m "Update ring2exe binaries"
+            git push
+          else
+            echo "No binary changes to commit."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
