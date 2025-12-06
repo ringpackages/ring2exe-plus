@@ -29,6 +29,7 @@ jobs:
         uses: ysdragon/ring-action@v1.3.0
         with:
           file: "tools/ring2exe/ring2exe.ring"
+          ring_packages: tokenslib
           output_exe: "true"
           args: "-static"
 
@@ -48,6 +49,7 @@ jobs:
         uses: ysdragon/ring-action@v1.3.0
         with:
           file: "tools/ring2exe/ring2exe.ring"
+          ring_packages: tokenslib
           output_exe: "true"
 
       - name: Upload macOS Intel artifact
@@ -66,6 +68,7 @@ jobs:
         uses: ysdragon/ring-action@v1.3.0
         with:
           file: "tools/ring2exe/ring2exe.ring"
+          ring_packages: tokenslib
           output_exe: "true"
 
       - name: Upload macOS ARM artifact
@@ -87,6 +90,7 @@ jobs:
         uses: ysdragon/ring-action@v1.3.0
         with:
           file: "tools/ring2exe/ring2exe.ring"
+          ring_packages: tokenslib
           output_exe: "true"
           args: "-static"
           arch: ${{ matrix.arch }}
