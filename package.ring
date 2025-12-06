@@ -16,13 +16,13 @@ aPackageInfo = [
 	:libs = 	[
 		[
 			:name = "stdlib",
-			:version = "1.0",
-			:providerusername = ""
+			:version = "1.0.22",
+			:providerusername = "ringpackages"
 		],
 		[
 			:name = "tokenslib",
-			:version = "1.0",
-			:providerusername = ""
+			:version = "1.0.3",
+			:providerusername = "ringpackages"
 		]
 	],
 	:files = 	[
