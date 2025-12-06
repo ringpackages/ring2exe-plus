@@ -930,19 +930,8 @@ echo 'You can now run: " + cOutput + "'
 		",3)
 		
 		# Get current date for changelog
-		cCurrentDate = ""
-		if isLinux()
-			# Use date command to get formatted date for RPM changelog
-			systemSilent("date +'%a %b %d %Y' > /tmp/rpmdate.tmp")
-			if fexists("/tmp/rpmdate.tmp")
-				cCurrentDate = trim(read("/tmp/rpmdate.tmp"))
-				systemSilent("rm -f /tmp/rpmdate.tmp")
-			else
-				cCurrentDate = "Mon Jan 01 2024"
-			ok
-		else
-			cCurrentDate = "Mon Jan 01 2024"
-		ok
+		aTimeList = TimeList()
+		cCurrentDate = aTimeList[1] + " " + aTimeList[3] + " " + aTimeList[6] + " " + aTimeList[19]
 		
 		# Format: * Day Mon DD YYYY Name <email> - Version-Release
 		cChangelogLine = cCurrentDate + " Developer Name <youraccount@email.com> - 1.0-1"
