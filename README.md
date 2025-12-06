@@ -50,7 +50,7 @@ ring2exe test.ring
 test.exe
 
 # On Linux, macOS, or FreeBSD
-./ring2exe test.ring
+ring2exe test.ring
 ./test
 ```
 
@@ -117,3 +117,7 @@ ring2exe myapp.ring -dist -pkg
 # Combine with library flags
 ring2exe myapp.ring -dist -deb -qt -allruntime
 ```
+
+## License
+
+This project is licensed under the MIT License. See the [`LICENSE`](LICENSE) file for details.

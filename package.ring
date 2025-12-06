@@ -27,6 +27,7 @@ aPackageInfo = [
 	],
 	:files = 	[
 		"install.ring",
+		"LICENSE",
 		"main.ring",
 		"README.md"
 	],
