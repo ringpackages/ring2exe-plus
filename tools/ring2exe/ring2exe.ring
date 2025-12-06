@@ -84,7 +84,7 @@ load "tokenslib.ring"
 load "utils/clicolors.ring"
 
 # Ring2EXE Plus Version
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 # Load Libraries information
 	aLibsInfo = []
