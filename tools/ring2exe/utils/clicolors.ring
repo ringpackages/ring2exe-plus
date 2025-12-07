@@ -14,40 +14,42 @@ ok
 # Color Functions (ANSI Escape Codes)
 # ========================================
 
+# Escape character
+C_ESC = char(27)
 
 # Reset and Styles
-func C_RESET    return char(27) + "[0m"
-func C_BOLD     return char(27) + "[1m"
-func C_DIM      return char(27) + "[2m"
-func C_ITALIC   return char(27) + "[3m"
-func C_UNDERLINE return char(27) + "[4m"
+C_RESET    = C_ESC + "[0m"
+C_BOLD     = C_ESC + "[1m"
+C_DIM      = C_ESC + "[2m"
+C_ITALIC   = C_ESC + "[3m"
+C_UNDERLINE = C_ESC + "[4m"
 
 # Foreground Colors
-func C_BLACK    return char(27) + "[30m"
-func C_RED      return char(27) + "[31m"
-func C_GREEN    return char(27) + "[32m"
-func C_YELLOW   return char(27) + "[33m"
-func C_BLUE     return char(27) + "[34m"
-func C_MAGENTA  return char(27) + "[35m"
-func C_CYAN     return char(27) + "[36m"
-func C_WHITE    return char(27) + "[37m"
+C_BLACK    = C_ESC + "[30m"
+C_RED      = C_ESC + "[31m"
+C_GREEN    = C_ESC + "[32m"
+C_YELLOW   = C_ESC + "[33m"
+C_BLUE     = C_ESC + "[34m"
+C_MAGENTA  = C_ESC + "[35m"
+C_CYAN     = C_ESC + "[36m"
+C_WHITE    = C_ESC + "[37m"
 
 # Bright Colors
-func C_BBLACK   return char(27) + "[90m"
-func C_BRED     return char(27) + "[91m"
-func C_BGREEN   return char(27) + "[92m"
-func C_BYELLOW  return char(27) + "[93m"
-func C_BBLUE    return char(27) + "[94m"
-func C_BMAGENTA return char(27) + "[95m"
-func C_BCYAN    return char(27) + "[96m"
-func C_BWHITE   return char(27) + "[97m"
+C_BBLACK   = C_ESC + "[90m"
+C_BRED     = C_ESC + "[91m"
+C_BGREEN   = C_ESC + "[92m"
+C_BYELLOW  = C_ESC + "[93m"
+C_BBLUE    = C_ESC + "[94m"
+C_BMAGENTA = C_ESC + "[95m"
+C_BCYAN    = C_ESC + "[96m"
+C_BWHITE   = C_ESC + "[97m"
 
 # Background Colors
-func C_BG_BLACK   return char(27) + "[40m"
-func C_BG_RED     return char(27) + "[41m"
-func C_BG_GREEN   return char(27) + "[42m"
-func C_BG_YELLOW  return char(27) + "[43m"
-func C_BG_BLUE    return char(27) + "[44m"
-func C_BG_MAGENTA return char(27) + "[45m"
-func C_BG_CYAN    return char(27) + "[46m"
-func C_BG_WHITE   return char(27) + "[47m"
+C_BG_BLACK   = C_ESC + "[40m"
+C_BG_RED     = C_ESC + "[41m"
+C_BG_GREEN   = C_ESC + "[42m"
+C_BG_YELLOW  = C_ESC + "[43m"
+C_BG_BLUE    = C_ESC + "[44m"
+C_BG_MAGENTA = C_ESC + "[45m"
+C_BG_CYAN    = C_ESC + "[46m"
+C_BG_WHITE   = C_ESC + "[47m"
