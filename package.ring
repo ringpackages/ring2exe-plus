@@ -36,7 +36,7 @@ aPackageInfo = [
 		"tools/ring2exe/build.sh",
 		"tools/ring2exe/README.md",
 		"tools/ring2exe/ring2exe.ring",
-		"tools/ring2exe/utils/clicolors.ring",
+		"tools/ring2exe/utils/cli.ring",
 		"tools/ring2exe/tests/test.ring",
 		"tools/ring2exe/tests/test2.ring",
 		"tools/ring2exe/tests/test3.ring"
