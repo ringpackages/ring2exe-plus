@@ -58,6 +58,34 @@ C_BG_WHITE   = C_ESC + "[47m"
 # Print Functions
 # ========================================
 
+func PrintHeader cTitle
+	? C_BOLD + C_BCYAN + "  " + cTitle + C_RESET
+	see nl
+
+func PrintStep nStep, nTotal, cAction, cDetail
+	see C_BOLD + C_MAGENTA + "  [" + nStep + "/" + nTotal + "] " + C_RESET
+	see C_BOLD + C_CYAN + cAction + C_RESET
+	if cDetail != ""
+		see " " + C_DIM + cDetail + C_RESET 
+	ok
+	see nl
+
+func PrintSubStep cMsg
+	? C_DIM + "        " + cMsg + C_RESET
+
+func PrintStatus cStatus, cMsg
+	? "  " + C_BOLD + C_GREEN + "➜  " + C_RESET + C_BOLD + cStatus + ": " + C_RESET + cMsg
+
+func PrintSuccess cMsg
+	see nl
+	? "  " + C_BOLD + C_GREEN + "✔  Success! " + C_RESET + cMsg
+	see nl
+
+func PrintError cMsg
+	see nl
+	? "  " + C_BOLD + C_RED + "✖  Error: " + C_RESET + cMsg
+	see nl
+
 # Print Section
 func PrintSection cTitle
 	? "  " + C_BOLD + C_BYELLOW + "● " + cTitle + C_RESET
@@ -77,9 +105,3 @@ func PrintCommand cCommand, cDesc
 # Draw Line
 func DrawLine 
 	? C_DIM + copy("─",75) + C_RESET
-
-# Print Message
-func msg cMsg
-	see C_BOLD + C_BGREEN + "● " + C_RESET 
-	see C_BOLD + "Ring2EXE Plus: " + C_RESET 
-	? cMsg
