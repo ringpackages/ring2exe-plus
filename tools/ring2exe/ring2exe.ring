@@ -132,10 +132,9 @@ func Main
 	if (nParaCount > 2) or ( nParaCount = 2 and aPara[1] != "ring" )
 		cFile = aPara[nParaCount]
 		if not fexists(cFile)
-			msg("File " + cFile + " doesn't exist!")
+			PrintError("File " + cFile + " doesn't exist!")
 			bye
 		ok
-		msg("Process File : " + cFile)
 		chdir(justfilepath(cFile))
 		cFile = justfilename(cFile)
 		BuildApp(cFile,aOptions,cCompiler,cCompilerFlags,cOutputFileName)
@@ -206,54 +205,80 @@ func GetOutputName aOptions, cDefault
 	return cDefault
 
 func BuildApp cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName
-	msg("Start building the application...")
+	PrintHeader("Ring2EXE Plus v" + VERSION)
+	PrintStatus("Processing", cFileName)
+	see nl
 	
-	# Generate the Object File
+	nTotalSteps = 4
+	if find(aOptions, "-dist") nTotalSteps++ ok
+
+	# 1. Generate Object File
+		PrintStep(1, nTotalSteps, "Compiling to Ring Object", "")
 		systemSilent('"' + exefolder()+"../bin/ring" + '" ' + cFileName + " -go -norun")
 		
-	# Generate the C Source Code File
+	# 2. Generate C Source Code File
+		PrintStep(2, nTotalSteps, "Generating C Source", "")
 		cFile = substr(cFileName,".ring","")
 		GenerateCFile(cFile,aOptions)
 		
-	# Generate the Batch File
+	# 3. Generate the Batch File
+		cBatchMode = "Dynamic"
+		if find(aOptions,"-static") cBatchMode = "Static" ok
+		PrintStep(3, nTotalSteps, "Preparing Build Scripts", "(" + cBatchMode + ")")
 		cBatch = GenerateBatch(cFile,aOptions,cCompiler,cCompilerFlags,cOutputFileName)
 		
-	# Build the Executable File
-		msg("Build the Executable File...")
+	# 4. Build the Executable File
+		PrintStep(4, nTotalSteps, "Compiling & Linking", "")
 		systemSilent(cBatch)
-		msg("End of building script...")
 		
 	# Prepare Application for distribution
 		if find(aOptions,"-dist")
+			PrintStep(5, nTotalSteps, "Preparing Distribution", "")
 			Distribute(cFile,aOptions)
 		else
 			if CheckNoCCompiler(currentdir(),cFile,aOptions)
 				if not find(aOptions,"-keep")
 					ClearTempFiles(2)
 				ok
-				EndofBuildingMsg()
 				return
 			ok
 		ok
-		EndofBuildingMsg()
 		
 	# Clear Temp Files
 		if not find(aOptions,"-keep")
+			# PrintSubStep("Cleaning up temporary files...")
 			cleartempfiles(1)
 		ok
 
-func EndofBuildingMsg
-	msg("End of building process...")
+	# Success Message
+	if find(aOptions,"-dist")
+		if isWindows()
+			cTarget = "target\windows"
+		else 
+			cTarget = "target/linux (or other platform output)"
+			if isLinux() cTarget = "target/linux" ok
+			if isMacOSX() cTarget = "target/macosx" ok
+			if isFreeBSD() cTarget = "target/freebsd" ok
+		ok
+		PrintSuccess("Distribution ready in " + cTarget)
+	else
+		cFinalOutput = GetOutputName(aOptions, cFile)
+		if isWindows() 
+			cFinalOutput += ".exe" 
+		else
+			cFinalOutput = "./" + cFinalOutput
+		ok
+		PrintSuccess("Executable ready: " + cFinalOutput)
+	ok
 
 func GenerateCFile cFileName,aOptions
 	# Display Message
-		msg("Generate C source code file...")
 	nTime = clock()
 	# Convert the Ring Object File to Hex.
 		cRingoFile = cFileName+".ringo"
 		if not fexists(cRingoFile)
-			msg("File " + cRingoFile + " doesn't exist!")
-			msg("Check the source code files for compiler errors")
+			PrintError("File " + cRingoFile + " doesn't exist!")
+			PrintError("Check the source code files for compiler errors")
 			bye
 		ok
 		cFile = read(cRingoFile)
@@ -293,10 +318,9 @@ func GenerateCFile cFileName,aOptions
 	return 0;',"#{f1}",cFileName+".ring") + nl + 
 	"}")
 	fclose(fp)	
-	msg("Generation Time : " + ((clock()-nTime)/clockspersecond()) + " seconds...")
+	PrintSubStep("Source generated in " + ((clock()-nTime)/clockspersecond()) + "s")
 
 func GenerateBatch cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName
-	msg("Generate batch|script file...")
 	if find(aOptions,"-static")
 		return GenerateBatchStatic(cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName)
 	else
@@ -304,7 +328,6 @@ func GenerateBatch cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName
 	ok
 
 func GenerateBatchDynamic cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName
-	msg("Generate batch|script file for dynamic building...")
 	return GenerateBatchGeneral([
 		:file = cFileName ,
 		:ringlib = [
@@ -316,7 +339,6 @@ func GenerateBatchDynamic cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFil
 	],aOptions,cCompiler,cCompilerFlags,cOutputFileName)
 
 func GenerateBatchStatic cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName
-	msg("Generate batch|script file for static building...")
 	return GenerateBatchGeneral([
 		:file = cFileName ,
 		:ringlib = [
@@ -467,7 +489,7 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 		ok
 
 func ClearTempFiles nPara
-	msg("Clear Temp. Files...")
+	PrintSubStep("Cleaning temporary files...")
 	
 	# Get list of files to clean up
 	aFiles = dir(currentdir())
@@ -557,50 +579,50 @@ func DistributeForWindows cBaseFolder,cFileName,aOptions
 	ok
 	OSCreateOpenFolder(:windows)
 	# copy the executable file
-		msg("Copy the executable file to target/windows")
+		PrintSubStep("Copying executable to target/windows")
 		cOutput = GetOutputName(aOptions, cFileName)
 		OSCopyFile(cBaseFolder+"\\"+cOutput+".exe")
 		CheckNoCCompiler(cBaseFolder,cOutput,aOptions)
 	# Check ring.dll
 		if not find(aOptions,"-static")	
-			msg("Copy ring.dll to target/windows")	
+			PrintSubStep("Copying ring.dll to target/windows")	
 			OSCopyFile(exefolder()+"\ring.dll")
 		ok
 	# Check All Runtime 
 		if find(aOptions,"-allruntime")	
-			msg("Copy all libraries to target/windows")	
+			PrintSubStep("Copying all libraries to target/windows")	
 			for aLibrary in aLibsInfo 
 				if not find(aOptions,"-no"+aLibrary[:name])
-					msg("Copy library files: "+aLibrary[:title])
+					PrintSubStep("Copying library files: "+aLibrary[:title])
 					if islist(aLibrary[:windowsfolders])
 						for cLibFolder in aLibrary[:windowsfolders]
-							msg("Copy folder: "+cLibFolder)
+							PrintSubStep("Copying folder: "+cLibFolder)
 							OSCopyFolder(exefolder(),cLibFolder)
 						next
 					ok
 					if islist(aLibrary[:windowsfiles])
 						for cLibFile in aLibrary[:windowsfiles]
-							msg("Copy file: "+cLibFile)
+							PrintSubStep("Copying file: "+cLibFile)
 							custom_OSCopyFile(exefolder(),cLibFile)
 						next
 					ok
 				else 
-					msg("Skip library "+aLibrary[:title])
+					PrintSubStep("Skipping library "+aLibrary[:title])
 				ok
 			next  	
 		else	# No -allruntime
 			for aLibrary in aLibsInfo 
 				if find(aOptions,"-"+aLibrary[:name])
-					msg("Add "+aLibrary[:title]+" to target/windows")
+					PrintSubStep("Adding "+aLibrary[:title]+" to target/windows")
 					if islist(aLibrary[:windowsfolders])
 						for cLibFolder in aLibrary[:windowsfolders]
-							msg("Copy folder: "+cLibFolder)
+							PrintSubStep("Copying folder: "+cLibFolder)
 							OSCopyFolder(exefolder(),cLibFolder)
 						next
 					ok
 					if islist(aLibrary[:windowsfiles])
 						for cLibFile in aLibrary[:windowsfiles]
-							msg("Copy file: "+cLibFile)
+							PrintSubStep("Copying file: "+cLibFile)
 							custom_OSCopyFile(exefolder(),cLibFile)
 						next
 					ok
@@ -649,7 +671,7 @@ func DistributeForLinux cBaseFolder,cFileName,aOptions
 	cDir = currentdir()
 	OSCreateOpenFolder(:bin)
 	# copy the executable file
-		msg("Copy the executable file to target/linux/bin")
+		PrintSubStep("Copying executable to target/linux/bin")
 		cOutput = GetOutputName(aOptions, cFileName)
 		OSCopyFile(cBaseFolder+"/"+cOutput)
 		CheckNoCCompiler(cBaseFolder,cOutput,aOptions)
@@ -663,19 +685,19 @@ func DistributeForLinux cBaseFolder,cFileName,aOptions
 	cDebianPackageDependency = ""
 	# Check ring.so
 		if not find(aOptions,"-static")	
-			msg("Copy libring.so to target/linux/lib")	
+			PrintSubStep("Copying libring.so to target/linux/lib")	
 			OSCopyFile(exefolder()+"/../lib/libring.so")
 		ok
 		cInstallLibs = InstallLibLinux(cInstallLibs,"libring.so")
 	# Check All Runtime 
 		if find(aOptions,"-allruntime")	
-			msg("Copy all libraries to target/linux/lib")
+			PrintSubStep("Copying all libraries to target/linux/lib")
 			OSCopyFile(exefolder()+"/../lib/libring.so")	
 			for aLibrary in aLibsInfo 
 				if not find(aOptions,"-no"+aLibrary[:name])
 					if islist(aLibrary[:linuxfiles])
 						for cLibFile in aLibrary[:linuxfiles]
-							msg("Copy file: "+cLibFile)
+							PrintSubStep("Copying file: "+cLibFile)
 							OSCopyFile(exefolder()+"/../lib/"+cLibFile)					
 							cInstallLibs = InstallLibLinux(cInstallLibs,cLibFile)
 						next
@@ -686,16 +708,16 @@ func DistributeForLinux cBaseFolder,cFileName,aOptions
 						cDebianPackageDependency += (" " + aLibrary[:ubuntudep])			
 					ok
 				else 
-					msg("Skip library "+aLibrary[:title])
+					PrintSubStep("Skipping library "+aLibrary[:title])
 				ok
 			next  	
 		else	# No -allruntime
 			for aLibrary in aLibsInfo 
 				if find(aOptions,"-"+aLibrary[:name])
-					msg("Add "+aLibrary[:title]+" to target/linux/lib")
+					PrintSubStep("Adding "+aLibrary[:title]+" to target/linux/lib")
 					if islist(aLibrary[:linuxfiles])
 						for cLibFile in aLibrary[:linuxfiles]
-							msg("Copy file: "+cLibFile)
+							PrintSubStep("Copying file: "+cLibFile)
 							OSCopyFile(exefolder()+"/../lib/"+cLibFile)
 							cInstallLibs = InstallLibLinux(cInstallLibs,cLibFile)
 						next
@@ -747,7 +769,7 @@ echo 'You can now run: " + cOutput + "'
 	
 	# Create the debian package
 	if ShouldGeneratePackage(aOptions, "deb")
-	msg("Prepare files to create the Debian package")
+	PrintSubStep("Preparing files to create the Debian package")
 	chdir(cDebDir)
 	# Get custom output filename for package name
 	cPackageName = cAppName
@@ -814,7 +836,7 @@ echo 'You can now run: " + cOutput + "'
 	
 	# Create the RPM package
 	if ShouldGeneratePackage(aOptions, "rpm")
-		msg("Prepare files to create the RPM package")
+		PrintSubStep("Preparing files to create the RPM package")
 		chdir(cRpmDir)
 		# Get custom output filename for package name
 		cRpmPackageName = cAppName
@@ -963,7 +985,7 @@ func DistributeForMacOSX cBaseFolder,cFileName,aOptions
 	cDistScriptsDir = currentdir()
 	OSCreateOpenFolder(:bin)
 	# copy the executable file
-		msg("Copy the executable file to target/macosx/dist_using_scripts/bin")
+		PrintSubStep("Copying executable to target/macosx/dist_using_scripts/bin")
 		cOutput = GetOutputName(aOptions, cFileName)
 		OSCopyFile(cBaseFolder+"/"+cOutput)
 		CheckNoCCompiler(cBaseFolder,cOutput,aOptions)
@@ -975,13 +997,13 @@ func DistributeForMacOSX cBaseFolder,cFileName,aOptions
 	cInstallLibs   = ""
 	# Check ring.dylib
 		if not find(aOptions,"-static")
-			msg("Copy libring.dylib to target/macosx/dist_using_scripts/lib")
+			PrintSubStep("Copying libring.dylib to target/macosx/dist_using_scripts/lib")
 			OSCopyFile(exefolder()+"/../lib/libring.dylib")
 		ok
 		cInstallLibs = InstallLibMacOSX(cInstallLibs,"libring.dylib")
 	# Check All Runtime
 		if find(aOptions,"-allruntime")
-			msg("Copy all libraries to target/macosx/dist_using_scripts/lib")
+			PrintSubStep("Copying all libraries to target/macosx/dist_using_scripts/lib")
 			OSCopyFile(exefolder()+"/../lib/libring.dylib")
 			for aLibrary in aLibsInfo
 				if not find(aOptions,"-no"+aLibrary[:name])
@@ -993,13 +1015,13 @@ func DistributeForMacOSX cBaseFolder,cFileName,aOptions
 					ok
 					cInstallmacosx += (" " + aLibrary[:macosxdep])
 				else
-					msg("Skip library "+aLibrary[:title])
+					PrintSubStep("Skipping library "+aLibrary[:title])
 				ok
 			next
 		else	# No -allruntime
 			for aLibrary in aLibsInfo
 				if find(aOptions,"-"+aLibrary[:name])
-					msg("Add "+aLibrary[:title]+" to target/macosx/dist_using_scripts/lib")
+					PrintSubStep("Adding "+aLibrary[:title]+" to target/macosx/dist_using_scripts/lib")
 					if islist(aLibrary[:macosxfiles])
 						for cLibFile in aLibrary[:macosxfiles]
 							OSCopyFile(exefolder()+"/../lib/"+cLibFile)
@@ -1079,7 +1101,7 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	cDir = currentdir()
 	OSCreateOpenFolder(:bin)
 	# copy the executable file
-		msg("Copy the executable file to target/freebsd/dist_using_scripts/bin")
+		PrintSubStep("Copying executable to target/freebsd/dist_using_scripts/bin")
 		cOutput = GetOutputName(aOptions, cAppName)
 		OSCopyFile(cBaseFolder+"/"+cOutput)
 		CheckNoCCompiler(cBaseFolder,cOutput,aOptions)
@@ -1092,26 +1114,26 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	cPkgDepString = ""
 	# Check libring.so
 		if not find(aOptions,"-static")
-			msg("Copy libring.so to target/freebsd/dist_using_scripts/lib")
+			PrintSubStep("Copying libring.so to target/freebsd/dist_using_scripts/lib")
 			OSCopyFile(exefolder()+"/../lib/libring.so")
 		ok
 		cInstallLibs = InstallLibFreeBSD(cInstallLibs,"libring.so")
 	# Check All Runtime
 		if find(aOptions,"-allruntime")
-			msg("Copy all libraries to target/freebsd/dist_using_scripts/lib")
+			PrintSubStep("Copying all libraries to target/freebsd/dist_using_scripts/lib")
 			OSCopyFile(exefolder()+"/../lib/libring.so")
 			for aLibrary in aLibsInfo
 				if not find(aOptions,"-no"+aLibrary[:name])
 					if islist(aLibrary[:freebsdfiles])
 						for cLibFile in aLibrary[:freebsdfiles]
-							msg("Copy file: "+cLibFile)
+							PrintSubStep("Copying file: "+cLibFile)
 							OSCopyFile(exefolder()+"/../lib/"+cLibFile)
 							cInstallLibs = InstallLibFreeBSD(cInstallLibs,cLibFile)
 						next
 					else
 						if islist(aLibrary[:linuxfiles])
 							for cLibFile in aLibrary[:linuxfiles]
-								msg("Copy file: "+cLibFile)
+								PrintSubStep("Copying file: "+cLibFile)
 								OSCopyFile(exefolder()+"/../lib/"+cLibFile)
 								cInstallLibs = InstallLibFreeBSD(cInstallLibs,cLibFile)
 							next
@@ -1123,23 +1145,23 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 						cPkgDepString += '"' + aLibrary[:freebsddep] + '": { "origin": "misc/' + aLibrary[:freebsddep] + '" }'
 					ok
 				else
-					msg("Skip library "+aLibrary[:title])
+					PrintSubStep("Skipping library "+aLibrary[:title])
 				ok
 			next
 		else	# No -allruntime
 			for aLibrary in aLibsInfo
 				if find(aOptions,"-"+aLibrary[:name])
-					msg("Add "+aLibrary[:title]+" to target/freebsd/dist_using_scripts/lib")
+					PrintSubStep("Adding "+aLibrary[:title]+" to target/freebsd/dist_using_scripts/lib")
 					if islist(aLibrary[:freebsdfiles])
 						for cLibFile in aLibrary[:freebsdfiles]
-							msg("Copy file: "+cLibFile)
+							PrintSubStep("Copying file: "+cLibFile)
 							OSCopyFile(exefolder()+"/../lib/"+cLibFile)
 							cInstallLibs = InstallLibFreeBSD(cInstallLibs,cLibFile)
 						next
 					else
 						if islist(aLibrary[:linuxfiles])
 							for cLibFile in aLibrary[:linuxfiles]
-								msg("Copy file: "+cLibFile)
+								PrintSubStep("Copying file: "+cLibFile)
 								OSCopyFile(exefolder()+"/../lib/"+cLibFile)
 								cInstallLibs = InstallLibFreeBSD(cInstallLibs,cLibFile)
 							next
@@ -1162,7 +1184,7 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	ok
 	# Create the pkg package
 	if ShouldGeneratePackage(aOptions, "pkg")
-	msg("Prepare files to create the pkg package")
+	PrintSubStep("Preparing files to create the pkg package")
 	chdir(cPkgDir)
 	cBuildPkg = "pkg create -m . -r stage -o ."
 	write("buildpkg.sh",cBuildPkg)
@@ -1231,7 +1253,7 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	ok
 
 func DistributeForMobileQt cBaseFolder,cFileName,aOptions
-	msg("Prepare RingQt project to distribute for Mobile")
+	PrintSubStep("Preparing RingQt project to distribute for Mobile")
 	# Get custom output filename if specified
 	cOutput = cFileName
 	for x = len(aOptions) to 1 step -1
@@ -1247,17 +1269,17 @@ func DistributeForMobileQt cBaseFolder,cFileName,aOptions
 	ok
 	OSCreateOpenFolder(:mobile)
 	OSCreateOpenFolder(:qtproject)
-	msg("Copy RingQt for Mobile project files...")
+	PrintSubStep("Copying RingQt for Mobile project files...")
 	OSCopyFile(exefolder() + "../extensions/android/ringqt/project/*.*" )
 	if fexists("project.pro.user")
 		OSDeleteFile("project.pro.user")
 	ok
-	msg("Prepare the Ring Object (*.ringo) file...")
+	PrintSubStep("Preparing the Ring Object (*.ringo) file...")
 	OSDeleteFile("ringapp.ring")
 	OSDeleteFile("ringapp.ringo")
 	# Use original filename for .ringo file (generated by Ring compiler)
 	cRINGOFile = cBaseFolder+"/"+cFileName+".ringo"
-	msg("Get the Ring Object File")
+	PrintSubStep("Getting the Ring Object File")
 	OSCopyFile(cRINGOFile)
 	# But use custom output name in Qt project files
 	cProjectRingoName = cOutput+".ringo"
@@ -1270,12 +1292,12 @@ func DistributeForMobileQt cBaseFolder,cFileName,aOptions
 	CheckQtResourceFile(cBaseFolder,cOutput,aOptions)
 	cMainFile = cBaseFolder+"/"+"main.cpp"
 	if fexists(cMainFile)
-		msg("We have the Main File : " + cMainFile)
-		msg("Copy the Main file to target/mobile/qtproject")
+		PrintSubStep("We have the Main File : " + cMainFile)
+		PrintSubStep("Copying the Main file to target/mobile/qtproject")
 		OSDeleteFile("main.cpp")
 		OSCopyFile(cMainFile)
 	ok
-	msg("Copy Ring and RingQt folders...")
+	PrintSubStep("Copying Ring and RingQt folders...")
 	if isWindows()
 		OSCopyFolder(exefolder() + "..\extensions\android\ringqt\project\","ring" )
 		OSCopyFolder(exefolder() + "..\extensions\android\ringqt\project\","ringqt" )
@@ -1285,7 +1307,7 @@ func DistributeForMobileQt cBaseFolder,cFileName,aOptions
 	ok
 
 func DistributeForWebAssemblyQt cBaseFolder,cFileName,aOptions
-	msg("Prepare RingQt project to distribute for Web (WebAssembly)")
+	PrintSubStep("Preparing RingQt project to distribute for Web (WebAssembly)")
 	# Get custom output filename if specified
 	cOutput = cFileName
 	for x = len(aOptions) to 1 step -1
@@ -1301,17 +1323,17 @@ func DistributeForWebAssemblyQt cBaseFolder,cFileName,aOptions
 	ok
 	OSCreateOpenFolder(:webassembly)
 	OSCreateOpenFolder(:qtproject)
-	msg("Copy RingQt for WebAssembly project files...")
+	PrintSubStep("Copying RingQt for WebAssembly project files...")
 	OSCopyFile(exefolder() + "../extensions/webassembly/ringqt/project/*.*" )
 	if fexists("project.pro.user")
 		OSDeleteFile("project.pro.user")
 	ok
-	msg("Prepare the Ring Object (*.ringo) file...")
+	PrintSubStep("Preparing the Ring Object (*.ringo) file...")
 	OSDeleteFile("ringapp.ring")
 	OSDeleteFile("ringapp.ringo")
 	# Use original filename for .ringo file (generated by Ring compiler)
 	cRINGOFile = cBaseFolder+"/"+cFileName+".ringo"
-	msg("Get the Ring Object File")
+	PrintSubStep("Getting the Ring Object File")
 	OSCopyFile(cRINGOFile)
 	# But use custom output name in Qt project files
 	cProjectRingoName = cOutput+".ringo"
@@ -1324,12 +1346,12 @@ func DistributeForWebAssemblyQt cBaseFolder,cFileName,aOptions
 	CheckQtResourceFile(cBaseFolder,cOutput,aOptions)
 	cMainFile = cBaseFolder+"/"+"main.cpp"
 	if fexists(cMainFile)
-		msg("We have the Main File : " + cMainFile)
-		msg("Copy the Main file to target/webassembly/qtproject")
+		PrintSubStep("We have the Main File : " + cMainFile)
+		PrintSubStep("Copying the Main file to target/webassembly/qtproject")
 		OSDeleteFile("main.cpp")
 		OSCopyFile(cMainFile)
 	ok
-	msg("Copy Ring and RingQt folders...")
+	PrintSubStep("Copying Ring and RingQt folders...")
 	if isWindows()
 		OSCopyFolder(exefolder() + "..\extensions\webassembly\ringqt\project\","ring" )
 		OSCopyFolder(exefolder() + "..\extensions\webassembly\ringqt\project\","ringqt" )
@@ -1341,11 +1363,11 @@ func DistributeForWebAssemblyQt cBaseFolder,cFileName,aOptions
 func CheckQtResourceFile cBaseFolder,cFileName,aOptions
 	cResourceFile = cBaseFolder+"/"+"project.qrc"
 	if fexists(cResourceFile)
-		msg("We have Qt Resource File : " + cResourceFile)
-		msg("Copy the resource file to the Qt project folder")
+		PrintSubStep("We have Qt Resource File : " + cResourceFile)
+		PrintSubStep("Copying the resource file to the Qt project folder")
 		OSDeleteFile("project.qrc")
 		OSCopyFile(cResourceFile)
-		msg("Copy files added to the Resource file")
+		PrintSubStep("Copying files added to the Resource file")
 		cResourceFileContent = read(cResourceFile)
 		aResourceFileContent = str2list(cResourceFileContent)
 		aFiles = []
@@ -1362,7 +1384,7 @@ func CheckQtResourceFile cBaseFolder,cFileName,aOptions
 			ok
 		next
 		for cFile in aFiles 
-			msg("Copy File : " + cFile)
+			PrintSubStep("Copying File : " + cFile)
 			custom_OSCopyFile(cBaseFolder,cFile)
 		next
 	ok
@@ -1399,7 +1421,6 @@ func CheckNoCCompiler cBaseFolder,cFileName,aOptions
 		cExeFile = cBaseFolder+"/"+cOutput
 	ok
 	if fexists(cExeFile)
-		msg("Executable file is ready!")
 		return False
 	ok
 	if isWindows()
@@ -1409,15 +1430,15 @@ func CheckNoCCompiler cBaseFolder,cFileName,aOptions
 	ok
 	if fexists(cRingOFile)
 		if cCustomCompiler != NULL
-			msg("No Executable, Looks like we don't have the '" + cCustomCompiler + "' C Compiler!")
+			PrintError("No Executable, Looks like we don't have the '" + cCustomCompiler + "' C Compiler!")
 		else 
-			msg("No Executable, Looks like we don't have a C Compiler!")
+			PrintError("No Executable, Looks like we don't have a C Compiler!")
 		ok
 	else 
-		msg("No Ring Object File!")
+		PrintError("No Ring Object File!")
 		return False
 	ok
-	msg("Using the Ring Way to create executable file without a C Compiler!")
+	PrintSubStep("Using Ring execution (no C compiler)")
 	cRingExeFile = exefolder() + "/ring"
 	if isWindows() 
 		if find(aOptions,"-gui")
@@ -1457,7 +1478,7 @@ func removeTabs cStr
 # AppImage and App Bundle Functions
 
 func CreateAppImage cAppName, aOptions
-	msg("Prepare files to create the AppImage package")
+	PrintSubStep("Preparing files to create the AppImage package")
 	
 	# Go back to the linux directory first
 	cLinuxDir = currentdir()
@@ -1485,7 +1506,7 @@ func CreateAppImage cAppName, aOptions
 		systemSilent("cp " + cLinuxDir + "/" + cScriptsPath + "/bin/" + cAppName + " usr/bin/")
 		systemSilent("chmod +x usr/bin/" + cAppName)
 	else
-		msg("Warning: Could not find executable at " + cScriptsPath + "/bin/" + cAppName)
+		PrintError("Could not find executable at " + cScriptsPath + "/bin/" + cAppName)
 		chdir(cAppDirPath)
 	ok
 	
@@ -1495,7 +1516,7 @@ func CreateAppImage cAppName, aOptions
 		chdir(cAppDirPath)
 		systemSilent("cp -a " + cLinuxDir + "/" + cScriptsPath + "/lib/. usr/lib/")
 	else
-		msg("Warning: Could not find libraries at " + cScriptsPath + "/lib")
+		PrintError("Could not find libraries at " + cScriptsPath + "/lib")
 		chdir(cAppDirPath)
 	ok
 	
@@ -1565,7 +1586,7 @@ func CreateAppImage cAppName, aOptions
 	systemSilent("chmod +x build_appimage.sh")
 	
 func CreateAppBundle cAppName, aOptions
-	msg("Prepare files to create the App Bundle package")
+	PrintSubStep("Preparing files to create the App Bundle package")
 	
 	# Store the parent macOS directory before creating the appbundle folder
 	cParentDir = currentdir()
@@ -1596,10 +1617,10 @@ func CreateAppBundle cAppName, aOptions
 		# Copy from bin directory to MacOS directory
 		systemSilent("cp dist_using_scripts/bin/" + cAppName + " " + cContentsPath + "/MacOS/" + cAppName + " 2>/dev/null || true")
 		if !fexists(cContentsPath + "/MacOS/" + cAppName)
-			msg("Warning: Failed to copy executable to App Bundle")
+			PrintError("Failed to copy executable to App Bundle")
 		ok
 	else
-		msg("Warning: Could not find executable at dist_using_scripts/bin/" + cAppName)
+		PrintError("Could not find executable at dist_using_scripts/bin/" + cAppName)
 	ok
 	
 	# Copy libraries to Frameworks directory
@@ -1610,7 +1631,7 @@ func CreateAppBundle cAppName, aOptions
 	if direxists("dist_using_scripts/lib")
 		systemSilent("cp -r dist_using_scripts/lib/* " + cContentsPath + "/Frameworks/ 2>/dev/null || true")
 	else
-		msg("Warning: Could not find libraries at dist_using_scripts/lib")
+		PrintError("Could not find libraries at dist_using_scripts/lib")
 	ok
 	
 	# Create Info.plist file
@@ -1751,7 +1772,7 @@ EOF
 	if fexists(cAppName)
 		systemSilent("chmod +x " + cAppName)
 	else
-		msg("Warning: Could not find " + cAppName + " to set permissions")
+		PrintError("Could not find " + cAppName + " to set permissions")
 	ok
 	
 	# Create build script
