@@ -195,25 +195,6 @@ func PrintHelp
 	see nl
 
 	DrawLine()
-	see nl
-
-func PrintSection cTitle
-	see "  " + C_BOLD() + C_BYELLOW() + "● " + cTitle + C_RESET() + nl
-
-func PrintOption cOption, cDesc
-	see "    " + C_CYAN() + cOption + C_RESET()
-	# Pad to align descriptions
-	nPad = 20 - len(cOption)
-	if nPad > 0 see copy(" ", nPad) ok
-	see C_DIM() + cDesc + C_RESET() + nl
-
-func DrawLine 
-	see C_DIM() + copy("─",75) + C_RESET() + nl
-
-func msg cMsg
-	see C_BOLD() + C_BGREEN() + "● " + C_RESET() 
-	see C_BOLD() + "Ring2EXE: " + C_RESET() 
-	see cMsg + nl
 
 func GetOutputName aOptions, cDefault
 	# Helper to extract -output= value from options

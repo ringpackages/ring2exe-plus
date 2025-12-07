@@ -43,17 +43,3 @@ func main
 	see nl
 
 	DrawLine()
-	see nl
-
-func PrintSection cTitle
-	see "  " + C_BOLD() + C_BYELLOW() + "● " + cTitle + C_RESET() + nl
-
-func PrintCommand cCommand, cDesc
-	see "    " + C_CYAN() + cCommand + C_RESET()
-	# Pad to align descriptions
-	nPad = 35 - len(cCommand)
-	if nPad > 0 see copy(" ", nPad) ok
-	see C_DIM() + cDesc + C_RESET() + nl
-
-func DrawLine 
-	see C_DIM() + copy("─",75) + C_RESET() + nl

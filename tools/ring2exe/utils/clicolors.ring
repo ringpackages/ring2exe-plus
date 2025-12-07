@@ -53,3 +53,33 @@ C_BG_BLUE    = C_ESC + "[44m"
 C_BG_MAGENTA = C_ESC + "[45m"
 C_BG_CYAN    = C_ESC + "[46m"
 C_BG_WHITE   = C_ESC + "[47m"
+
+# ========================================
+# Print Functions
+# ========================================
+
+# Print Section
+func PrintSection cTitle
+	? "  " + C_BOLD + C_BYELLOW + "● " + cTitle + C_RESET
+
+# Print Option
+func PrintOption cOption, cDesc
+	see "    " + C_CYAN + cOption + C_RESET
+	# Pad to align descriptions
+	nPad = 20 - len(cOption)
+	if nPad > 0 see copy(" ", nPad) ok
+	? C_DIM + cDesc + C_RESET
+
+# Print Command
+func PrintCommand cCommand, cDesc
+	PrintOption(cCommand, cDesc)
+	
+# Draw Line
+func DrawLine 
+	? C_DIM + copy("─",75) + C_RESET
+
+# Print Message
+func msg cMsg
+	see C_BOLD + C_BGREEN + "● " + C_RESET 
+	see C_BOLD + "Ring2EXE Plus: " + C_RESET 
+	? cMsg
