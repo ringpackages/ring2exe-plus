@@ -1245,9 +1245,9 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	cDesc = "Ring Application"
 	cManifest = '
 {
-	"name": "' + cAppName + '",
+	"name": "' + cPkgExecName + '",
 	"version": "1.0",
-	"origin": "misc/' + cAppName + '",
+	"origin": "misc/' + cPkgExecName + '",
 	"arch": "' + GetPackageArch("pkg") + '",
 	"comment": "Ring Application",
 	"desc": "' + cDesc + '",
