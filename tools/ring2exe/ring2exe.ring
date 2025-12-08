@@ -766,15 +766,15 @@ func DistributeForLinux cBaseFolder,cFileName,aOptions
 	chdir(cDir)
 	# Create installation script content
 	cInstallApp = "
-echo 'Installing application...'
-sudo mkdir -p /usr/local/bin
-sudo mkdir -p /usr/local/lib
-sudo cp bin/" + cOutput + " /usr/local/bin/
-echo 'Executable installed to /usr/local/bin/" + cOutput + "'
-" + cInstallLibs + "
-echo 'Installation completed successfully!'
-echo 'You can now run: " + cOutput + "'
-"
+	echo 'Installing application...'
+	sudo mkdir -p /usr/local/bin
+	sudo mkdir -p /usr/local/lib
+	sudo cp -r bin/* /usr/local/bin/
+	echo 'Executable installed to /usr/local/bin/'
+	" + cInstallLibs + "
+	echo 'Installation completed successfully!'
+	echo 'You can now run: " + cOutput + "'
+	"
 	cInstallApp = RemoveFirstTabs(cInstallApp,1)
 	
 	# Always create installation scripts with full installation commands
@@ -831,33 +831,15 @@ echo 'You can now run: " + cOutput + "'
 	cControl = substr(cControl,"#{f2}",cDebianPackageDependency)
 	cControl = substr(cControl,"#{f3}",GetPackageArch("deb"))
 	write("control",cControl)
-	cPostInst = RemoveFirstTabs("#!/bin/sh
-		cd /usr/local/#{f1}/bin
-		./#{f2}
-		exit 0
-	",2)
-	cPostInst = substr(cPostInst,"#{f1}",cPackageName)
-	# Get the actual executable name for postinst
-	cExecName = cOutput
-	cPostInst = substr(cPostInst,"#{f2}",cExecName)
-	write("postinst",cPostInst)
-	SystemSilent("chmod +x postinst")
 	chdir(cAppFolder)
 	OSCreateOpenFolder("usr")
 		cUsrFolder = currentdir()
 		OSCreateOpenFolder("bin")
-		# Create wrapper script with custom output name
-		write(cOutput,"/usr/local/"+cPackageName+"/bin/"+cOutput+" \$1 \$2 \$3 \$4 \$5 \$6 \$7")
-		systemSilent("chmod +x " + cOutput)
 		chdir(cUsrFolder)
 		OSCreateOpenFolder("lib")
-		chdir(cUsrFolder)
-		OSCreateOpenFolder("local")
-			OSCreateOpenFolder(cPackageName)
-				OSCreateOpenFolder("bin")
 	chdir(cAppFolder)
 	systemSilent("cp -a ../../dist_using_scripts/lib/. usr/lib/")
-	systemSilent("cp -a ../../dist_using_scripts/bin/. usr/local/"+cPackageName+"/bin/")
+	systemSilent("cp -a ../../dist_using_scripts/bin/. usr/bin/")
 	ok
 	
 	# Create the RPM package
@@ -892,13 +874,13 @@ echo 'You can now run: " + cOutput + "'
 		chdir(cBuildRootDir)
 		OSCreateOpenFolder("usr")
 		chdir(cBuildRootDir + "/usr")
-		OSCreateOpenFolder("local")
-		chdir(cBuildRootDir + "/usr/local")
 		OSCreateOpenFolder("bin")
-		chdir(cBuildRootDir + "/usr/local/bin")
-		# Copy executable
-		cRpmOutput = cOutput
-		OSCopyFile(cLinuxDir + "/dist_using_scripts/bin/" + cRpmOutput)
+		chdir(cBuildRootDir + "/usr/bin")
+		# Copy executable and potential ring.ringo
+		OSCopyFile(cLinuxDir + "/dist_using_scripts/bin/" + cOutput)
+		if fexists(cLinuxDir + "/dist_using_scripts/bin/ring.ringo")
+			OSCopyFile(cLinuxDir + "/dist_using_scripts/bin/ring.ringo")
+		ok
 		chdir(cBuildRootDir + "/usr")
 		OSCreateOpenFolder("lib64")
 		chdir(cBuildRootDir + "/usr/lib64")
@@ -935,6 +917,13 @@ echo 'You can now run: " + cOutput + "'
 			cRequiresLine = "Requires: " + cRpmRequires + nl
 		ok
 		
+		# Prepare files list for Spec
+		cSpecFiles = "/usr/bin/" + cOutput + nl
+		if fexists(cLinuxDir + "/dist_using_scripts/bin/ring.ringo")
+			cSpecFiles += "/usr/bin/ring.ringo" + nl
+		ok
+		cSpecFiles += "/usr/lib64/*"
+		
 		cRpmSpec = RemoveFirstTabs("Name: #{f1}
 			Version: 1.0
 			Release: 1%{?dist}
@@ -949,8 +938,7 @@ echo 'You can now run: " + cOutput + "'
 			Ring Application built with Ring2EXE
 			
 			%files
-			/usr/local/bin/#{f3}
-			/usr/lib64/*
+			#{f5}
 			
 			%changelog
 			* #{f4}
@@ -966,8 +954,9 @@ echo 'You can now run: " + cOutput + "'
 		
 		cRpmSpec = substr(cRpmSpec,"#{f1}",cRpmPackageName)
 		cRpmSpec = substr(cRpmSpec,"#{f2}",cRequiresLine)
-		cRpmSpec = substr(cRpmSpec,"#{f3}",cRpmOutput)
+		cRpmSpec = substr(cRpmSpec,"#{f3}",cOutput)
 		cRpmSpec = substr(cRpmSpec,"#{f4}",cChangelogLine)
+		cRpmSpec = substr(cRpmSpec,"#{f5}",cSpecFiles)
 		write(cRpmPackageName + ".spec",cRpmSpec)
 	ok
 
@@ -1226,6 +1215,10 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	chdir(cLocalDir+"/bin")
 	cOutput = GetOutputName(aOptions, cAppName)
 	OSCopyFile(cFreeBSDDir+"/dist_using_scripts/bin/"+cOutput)
+	# Copy ring.ringo if it exists (for fallback execution without C compiler)
+	if fexists(cFreeBSDDir+"/dist_using_scripts/bin/ring.ringo")
+		OSCopyFile(cFreeBSDDir+"/dist_using_scripts/bin/ring.ringo")
+	ok
 	chdir(cLocalDir)
 	OSCreateOpenFolder("lib")
 	chdir(cLocalDir+"/lib")
@@ -1235,6 +1228,10 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	# Get custom output filename for FreeBSD package
 	cPkgExecName = cOutput
 	cFilesString = '"/usr/local/bin/' + cPkgExecName + '": "0755"'
+	# Include ring.ringo in package if it exists
+	if fexists(cFreeBSDDir+"/dist_using_scripts/bin/ring.ringo")
+		cFilesString += ',"/usr/local/bin/ring.ringo": "0644"'
+	ok
 	cLibDir = cFreeBSDDir+"/dist_using_scripts/lib/"
 	aLibFiles = dir(cLibDir)
 	for item in aLibFiles
@@ -1639,6 +1636,10 @@ func CreateAppBundle cAppName, aOptions
 		ok
 	else
 		PrintError("Could not find executable at dist_using_scripts/bin/" + cAppName)
+	ok
+	# Copy ring.ringo if it exists (for fallback execution without C compiler)
+	if fexists("dist_using_scripts/bin/ring.ringo")
+		systemSilent("cp dist_using_scripts/bin/ring.ringo " + cContentsPath + "/MacOS/ring.ringo 2>/dev/null || true")
 	ok
 	
 	# Copy libraries to Frameworks directory
