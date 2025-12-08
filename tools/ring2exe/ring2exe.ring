@@ -257,41 +257,40 @@ func BuildApp cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName
 		if find(aOptions,"-dist")
 			PrintStep(5, nTotalSteps, "Preparing Distribution", "")
 			Distribute(cFile,aOptions)
-		else
-			if CheckNoCCompiler(currentdir(),cFile,aOptions)
-				if not find(aOptions,"-keep")
-					ClearTempFiles(2)
-				ok
-				return
+			
+			# Success Message for Distribution
+			if isWindows()
+				cTarget = "target\windows"
+			else 
+				cTarget = "target/linux (or other platform output)"
+				if isLinux() cTarget = "target/linux" ok
+				if isMacOSX() cTarget = "target/macosx" ok
+				if isFreeBSD() cTarget = "target/freebsd" ok
 			ok
-		ok
-		
-	# Clear Temp Files
-		if not find(aOptions,"-keep")
-			# PrintSubStep("Cleaning up temporary files...")
-			cleartempfiles(1)
-		ok
-
-	# Success Message
-	if find(aOptions,"-dist")
-		if isWindows()
-			cTarget = "target\windows"
-		else 
-			cTarget = "target/linux (or other platform output)"
-			if isLinux() cTarget = "target/linux" ok
-			if isMacOSX() cTarget = "target/macosx" ok
-			if isFreeBSD() cTarget = "target/freebsd" ok
-		ok
-		PrintSuccess("Distribution ready in " + cTarget)
-	else
-		cFinalOutput = GetOutputName(aOptions, cFile)
-		if isWindows() 
-			cFinalOutput += ".exe" 
+			PrintSuccess("Distribution ready in " + cTarget)
 		else
-			cFinalOutput = "./" + cFinalOutput
+			lFallback = CheckNoCCompiler(currentdir(),cFile,aOptions)
+			
+			# Clear Temp Files
+			if not find(aOptions,"-keep")
+				# If fallback (lFallback=True), use mode 2 (keep ringo)
+				# If compiled (lFallback=False), use mode 1 (delete ringo)
+				if lFallback
+					ClearTempFiles(2)
+				else
+					ClearTempFiles(1)
+				ok
+			ok
+
+			# Success Message for Executable
+			cFinalOutput = GetOutputName(aOptions, cFile)
+			if isWindows() 
+				cFinalOutput += ".exe" 
+			else
+				cFinalOutput = "./" + cFinalOutput
+			ok
+			PrintSuccess("Executable ready: " + cFinalOutput)
 		ok
-		PrintSuccess("Executable ready: " + cFinalOutput)
-	ok
 
 func GenerateCFile cFileName,aOptions
 	# Display Message
@@ -1416,9 +1415,9 @@ func CheckNoCCompiler cBaseFolder,cFileName,aOptions
 	ok
 	if fexists(cRingOFile)
 		if cCustomCompiler != NULL
-			PrintError("No Executable, Looks like we don't have the '" + cCustomCompiler + "' C Compiler!")
+			PrintWarning("C Compiler '" + cCustomCompiler + "' not found.")
 		else 
-			PrintError("No Executable, Looks like we don't have a C Compiler!")
+			PrintWarning("C Compiler not found.")
 		ok
 	else 
 		PrintError("No Ring Object File!")
