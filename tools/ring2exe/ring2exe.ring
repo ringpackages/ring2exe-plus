@@ -267,6 +267,12 @@ func BuildApp cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName
 				if isMacOSX() cTarget = "target/macosx" ok
 				if isFreeBSD() cTarget = "target/freebsd" ok
 			ok
+			
+			# Clean Temp Files
+			if not find(aOptions,"-keep")
+				ClearTempFiles(1)
+			ok
+
 			PrintSuccess("Distribution ready in " + cTarget)
 		else
 			lFallback = CheckNoCCompiler(currentdir(),cFile,aOptions)
@@ -584,9 +590,11 @@ func Distribute cFileName,aOptions
 	ok
 	# Delete the executable file
 		if isWindows()
-			OSDeleteFile(cBaseFolder+"\"+cOutput+".exe")
+			cFileForDel = cBaseFolder+"\"+cOutput+".exe"
+			if fexists(cFileForDel) OSDeleteFile(cFileForDel) ok
 		else
-			OSDeleteFile(cBaseFolder+"/"+cOutput)
+			cFileForDel = cBaseFolder+"/"+cOutput
+			if fexists(cFileForDel) OSDeleteFile(cFileForDel) ok
 		ok
 	chdir(cBaseFolder)
 
@@ -599,7 +607,10 @@ func DistributeForWindows cBaseFolder,cFileName,aOptions
 	# copy the executable file
 		PrintSubStep("Copying executable to target/windows")
 		cOutput = GetOutputName(aOptions, cFileName)
-		OSCopyFile(cBaseFolder+"\\"+cOutput+".exe")
+		cSrcFile = cBaseFolder+"\"+cOutput+".exe"
+		if fexists(cSrcFile)
+			OSCopyFile(cSrcFile)
+		ok
 		CheckNoCCompiler(cBaseFolder,cFileName,aOptions)
 	# Check ring.dll
 		if not find(aOptions,"-static")	
@@ -691,7 +702,10 @@ func DistributeForLinux cBaseFolder,cFileName,aOptions
 	# copy the executable file
 		PrintSubStep("Copying executable to target/linux/bin")
 		cOutput = GetOutputName(aOptions, cFileName)
-		OSCopyFile(cBaseFolder+"/"+cOutput)
+		cSrcFile = cBaseFolder+"/"+cOutput
+		if fexists(cSrcFile)
+			OSCopyFile(cSrcFile)
+		ok
 		CheckNoCCompiler(cBaseFolder,cFileName,aOptions)
 	# Copy Files (Images, etc) in Resources File
 		CheckQtResourceFile(cBaseFolder,cFileName,aOptions)
@@ -993,7 +1007,10 @@ func DistributeForMacOSX cBaseFolder,cFileName,aOptions
 	# copy the executable file
 		PrintSubStep("Copying executable to target/macosx/dist_using_scripts/bin")
 		cOutput = GetOutputName(aOptions, cFileName)
-		OSCopyFile(cBaseFolder+"/"+cOutput)
+		cSrcFile = cBaseFolder+"/"+cOutput
+		if fexists(cSrcFile)
+			OSCopyFile(cSrcFile)
+		ok
 		CheckNoCCompiler(cBaseFolder,cFileName,aOptions)
 	# Copy Files (Images, etc) in Resources File
 		CheckQtResourceFile(cBaseFolder,cFileName,aOptions)
@@ -1109,7 +1126,10 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	# copy the executable file
 		PrintSubStep("Copying executable to target/freebsd/dist_using_scripts/bin")
 		cOutput = GetOutputName(aOptions, cAppName)
-		OSCopyFile(cBaseFolder+"/"+cOutput)
+		cSrcFile = cBaseFolder+"/"+cOutput
+		if fexists(cSrcFile)
+			OSCopyFile(cSrcFile)
+		ok
 		CheckNoCCompiler(cBaseFolder,cFileName,aOptions)
 	# Copy Files (Images, etc) in Resources File
 		CheckQtResourceFile(cBaseFolder,cAppName,aOptions)
