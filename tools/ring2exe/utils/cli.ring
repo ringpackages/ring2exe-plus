@@ -86,6 +86,11 @@ func PrintError cMsg
 	? "  " + C_BOLD + C_RED + "✖  Error: " + C_RESET + cMsg
 	see nl
 
+func PrintWarning cMsg
+	see nl
+	? "  " + C_BOLD + C_YELLOW + "⚠  Warning: " + C_RESET + cMsg
+	see nl
+
 # Print Section
 func PrintSection cTitle
 	? "  " + C_BOLD + C_BYELLOW + "● " + cTitle + C_RESET
