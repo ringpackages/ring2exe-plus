@@ -1294,7 +1294,7 @@ func DistributeForMobileQt cBaseFolder,cFileName,aOptions
 	cProjectRingoName = cOutput+".ringo"
 	# Only rename if the names are different
 	if cFileName+".ringo" != cProjectRingoName
-		OSRenameFile(cFileName+".ringo", cProjectRingoName)
+		rename(cFileName+".ringo", cProjectRingoName)
 	ok
 	write("main.cpp",substr(read("main.cpp"),"ringapp.ringo",cProjectRingoName))
 	write("project.qrc",substr(read("project.qrc"),"ringapp.ringo",cProjectRingoName))
@@ -1341,7 +1341,7 @@ func DistributeForWebAssemblyQt cBaseFolder,cFileName,aOptions
 	cProjectRingoName = cOutput+".ringo"
 	# Only rename if the names are different
 	if cFileName+".ringo" != cProjectRingoName
-		OSRenameFile(cFileName+".ringo", cProjectRingoName)
+		rename(cFileName+".ringo", cProjectRingoName)
 	ok
 	write("main.cpp",substr(read("main.cpp"),"ringapp.ringo",cProjectRingoName))
 	write("project.qrc",substr(read("project.qrc"),"ringapp.ringo",cProjectRingoName))
@@ -1453,15 +1453,15 @@ func CheckNoCCompiler cBaseFolder,cFileName,aOptions
 	OSCopyFile(cRingExeFile)
 	if isWindows()
 		if find(aOptions,"-gui")
-			OSRenameFile("ringw.exe",cOutput+".exe")
+			rename("ringw.exe",cOutput+".exe")
 		else
-			OSRenameFile("ring.exe",cOutput+".exe")
+			rename("ring.exe",cOutput+".exe")
 		ok
 		if cBaseFolder != currentdir()
 			OSCopyFile(cBaseFolder+"\"+cFileName+".ringo")
 		ok
 	else 
-		OSRenameFile("ring",cOutput)
+		rename("ring",cOutput)
 		if cBaseFolder != currentdir()
 			OSCopyFile(cBaseFolder+"/"+cFileName+".ringo")
 		ok
@@ -1469,7 +1469,7 @@ func CheckNoCCompiler cBaseFolder,cFileName,aOptions
 	if fexists("ring.ringo")
 		remove("ring.ringo")
 	ok
-	OSRenameFile(cFileName+".ringo","ring.ringo")
+	rename(cFileName+".ringo","ring.ringo")
 	# Clean up the C source file since we are using Ring execution
 	if not find(aOptions, "-keep")
 		cCFile = cBaseFolder + "\" + cFileName + ".c"
