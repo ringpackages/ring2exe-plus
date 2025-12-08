@@ -110,15 +110,18 @@ func Main
 	cOutputFileName = ""
 	# Get Options
 		for x = len(aPara) to 1 step -1
-			cOption = lower(trim(aPara[x]))
-			if left(cOption,1) = "-"
-				if left(cOption,4) = "-cc="
+			cOption = trim(aPara[x])
+			cOptionLower = lower(cOption)
+			if left(cOptionLower,1) = "-"
+				if left(cOptionLower,4) = "-cc="
 					cCompiler = substr(cOption, 5)
+					aOptions + cOption
 					del(aPara,x)
-				but left(cOption,8) = "-cflags="
+				but left(cOptionLower,8) = "-cflags="
 					cCompilerFlags = substr(cOption, 9)
+					aOptions + cOption
 					del(aPara,x)
-				but left(cOption,8) = "-output="
+				but left(cOptionLower,8) = "-output="
 					cOutputFileName = substr(cOption, 9)
 					aOptions + cOption
 					del(aPara,x)
@@ -228,8 +231,27 @@ func BuildApp cFileName,aOptions,cCompiler,cCompilerFlags,cOutputFileName
 		cBatch = GenerateBatch(cFile,aOptions,cCompiler,cCompilerFlags,cOutputFileName)
 		
 	# 4. Build the Executable File
+		# Delete the output file locally if it exists (to ensure build failure detection)
+		cDeleteOutput = cFile
+		if cOutputFileName != ""
+			cDeleteOutput = cOutputFileName
+		else
+			cDeleteOutput = substr(cDeleteOutput, " ", "_")
+		ok
+		if isWindows() cDeleteOutput += ".exe" ok
+		
+		if fexists(cDeleteOutput)
+			remove(cDeleteOutput)
+		ok
+
 		PrintStep(4, nTotalSteps, "Compiling & Linking", "")
-		systemSilent(cBatch)
+		if cBatch != NULL
+			if isWindows()
+				systemSilent(cBatch + " 2>nul")
+			else
+				systemSilent(cBatch + " 2>/dev/null")
+			ok
+		ok
 		
 	# Prepare Application for distribution
 		if find(aOptions,"-dist")
@@ -388,12 +410,7 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 			ok
 		else
 			# GCC/Clang/TCC syntax
-
-			# Check if compiler is available
-			if trim(SystemCmd("where " + cComp + " 2>nul")) = ""
-				PrintError("Compiler " + cComp + " not found in system PATH!")
-				bye
-			ok
+			
 			cFlags = "-O2"
 			if cCompilerFlags != NULL
 				cFlags = cCompilerFlags
@@ -434,6 +451,7 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 		if cCompiler != NULL
 			cComp = cCompiler
 		ok
+
 		cFlags = "-O2"
 		if cCompilerFlags != NULL
 			cFlags = cCompilerFlags
@@ -451,6 +469,7 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 		if cCompiler != NULL
 			cComp = cCompiler
 		ok
+
 		cFlags = "-O2"
 		if cCompilerFlags != NULL
 			cFlags = cCompilerFlags
@@ -468,6 +487,7 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 		if cCompiler != NULL
 			cComp = cCompiler
 		ok
+
 		cFlags = "-O2"
 		if cCompilerFlags != NULL
 			cFlags = cCompilerFlags
@@ -546,14 +566,7 @@ func ClearTempFiles nPara
 func Distribute cFileName,aOptions
 	cBaseFolder = currentdir()
 	# Get custom output filename if specified
-	cOutput = cFileName
-	for x = len(aOptions) to 1 step -1
-		cOption = lower(trim(aOptions[x]))
-		if left(cOption,8) = "-output="
-			cOutput = substr(cOption, 9)
-			exit
-		ok
-	next
+	cOutput = GetOutputName(aOptions, cFileName)
 	OSCreateOpenFolder(:target)
 	if find(aOptions,"-mobileqt")
 		# Prepare Application for Mobile (RingQt)
@@ -588,7 +601,7 @@ func DistributeForWindows cBaseFolder,cFileName,aOptions
 		PrintSubStep("Copying executable to target/windows")
 		cOutput = GetOutputName(aOptions, cFileName)
 		OSCopyFile(cBaseFolder+"\\"+cOutput+".exe")
-		CheckNoCCompiler(cBaseFolder,cOutput,aOptions)
+		CheckNoCCompiler(cBaseFolder,cFileName,aOptions)
 	# Check ring.dll
 		if not find(aOptions,"-static")	
 			PrintSubStep("Copying ring.dll to target/windows")	
@@ -680,7 +693,7 @@ func DistributeForLinux cBaseFolder,cFileName,aOptions
 		PrintSubStep("Copying executable to target/linux/bin")
 		cOutput = GetOutputName(aOptions, cFileName)
 		OSCopyFile(cBaseFolder+"/"+cOutput)
-		CheckNoCCompiler(cBaseFolder,cOutput,aOptions)
+		CheckNoCCompiler(cBaseFolder,cFileName,aOptions)
 	# Copy Files (Images, etc) in Resources File
 		CheckQtResourceFile(cBaseFolder,cFileName,aOptions)
 	chdir(cDir)
@@ -779,14 +792,8 @@ echo 'You can now run: " + cOutput + "'
 	chdir(cDebDir)
 	# Get custom output filename for package name
 	cPackageName = cAppName
-	for x = len(aOptions) to 1 step -1
-		cOption = lower(trim(aOptions[x]))
-		if left(cOption,8) = "-output="
-			cPackageName = substr(cOption, 9)
-			cPackageName = substr(cPackageName," ","_")
-			exit
-		ok
-	next
+	cPackageName = GetOutputName(aOptions, cPackageName)
+	cPackageName = substr(cPackageName," ","_")
 	cBuildDeb = "dpkg-deb --build #{f1}_1.0-1"
 	cBuildDeb = substr(cBuildDeb,"#{f1}",cPackageName)
 	write("builddeb.sh",cBuildDeb)
@@ -846,14 +853,8 @@ echo 'You can now run: " + cOutput + "'
 		chdir(cRpmDir)
 		# Get custom output filename for package name
 		cRpmPackageName = cAppName
-		for x = len(aOptions) to 1 step -1
-			cOption = lower(trim(aOptions[x]))
-			if left(cOption,8) = "-output="
-				cRpmPackageName = substr(cOption, 9)
-				cRpmPackageName = substr(cRpmPackageName," ","_")
-				exit
-			ok
-		next
+		cRpmPackageName = GetOutputName(aOptions, cRpmPackageName)
+		cRpmPackageName = substr(cRpmPackageName," ","_")
 		cBuildRpm = "rpmbuild -bb --define '_topdir #{f1}' --define '_builddir #{f1}/BUILD' --define '_rpmdir #{f1}/RPMS' --define '_sourcedir #{f1}/SOURCES' --define '_specdir #{f1}/SPECS' --define '_srcrpmdir #{f1}/SRPMS' --target #{f3} #{f2}.spec"
 		cBuildRpm = substr(cBuildRpm,"#{f1}",currentdir())
 		cBuildRpm = substr(cBuildRpm,"#{f2}",cRpmPackageName)
@@ -994,7 +995,7 @@ func DistributeForMacOSX cBaseFolder,cFileName,aOptions
 		PrintSubStep("Copying executable to target/macosx/dist_using_scripts/bin")
 		cOutput = GetOutputName(aOptions, cFileName)
 		OSCopyFile(cBaseFolder+"/"+cOutput)
-		CheckNoCCompiler(cBaseFolder,cOutput,aOptions)
+		CheckNoCCompiler(cBaseFolder,cFileName,aOptions)
 	# Copy Files (Images, etc) in Resources File
 		CheckQtResourceFile(cBaseFolder,cFileName,aOptions)
 	chdir(cDistScriptsDir)
@@ -1110,7 +1111,7 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 		PrintSubStep("Copying executable to target/freebsd/dist_using_scripts/bin")
 		cOutput = GetOutputName(aOptions, cAppName)
 		OSCopyFile(cBaseFolder+"/"+cOutput)
-		CheckNoCCompiler(cBaseFolder,cOutput,aOptions)
+		CheckNoCCompiler(cBaseFolder,cFileName,aOptions)
 	# Copy Files (Images, etc) in Resources File
 		CheckQtResourceFile(cBaseFolder,cAppName,aOptions)
 	chdir(cDir)
@@ -1214,13 +1215,6 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 	# Generate files list
 	# Get custom output filename for FreeBSD package
 	cPkgExecName = cOutput
-	for x = len(aOptions) to 1 step -1
-		cOption = lower(trim(aOptions[x]))
-		if left(cOption,8) = "-output="
-			cPkgExecName = substr(cOption, 9)
-			exit
-		ok
-	next
 	cFilesString = '"/usr/local/bin/' + cPkgExecName + '": "0755"'
 	cLibDir = cFreeBSDDir+"/dist_using_scripts/lib/"
 	aLibFiles = dir(cLibDir)
@@ -1261,14 +1255,7 @@ func DistributeForFreeBSD cBaseFolder,cFileName,aOptions
 func DistributeForMobileQt cBaseFolder,cFileName,aOptions
 	PrintSubStep("Preparing RingQt project to distribute for Mobile")
 	# Get custom output filename if specified
-	cOutput = cFileName
-	for x = len(aOptions) to 1 step -1
-		cOption = lower(trim(aOptions[x]))
-		if left(cOption,8) = "-output="
-			cOutput = substr(cOption, 9)
-			exit
-		ok
-	next
+	cOutput = GetOutputName(aOptions, cFileName)
 	# Delete Files
 	if(direxists(:mobile))
 		OSDeleteFolder(:mobile)
@@ -1315,14 +1302,7 @@ func DistributeForMobileQt cBaseFolder,cFileName,aOptions
 func DistributeForWebAssemblyQt cBaseFolder,cFileName,aOptions
 	PrintSubStep("Preparing RingQt project to distribute for Web (WebAssembly)")
 	# Get custom output filename if specified
-	cOutput = cFileName
-	for x = len(aOptions) to 1 step -1
-		cOption = lower(trim(aOptions[x]))
-		if left(cOption,8) = "-output="
-			cOutput = substr(cOption, 9)
-			exit
-		ok
-	next
+	cOutput = GetOutputName(aOptions, cFileName)
 	# Delete Files
 	if(direxists(:webassembly))
 		OSDeleteFolder(:webassembly)
@@ -1417,7 +1397,7 @@ func CheckNoCCompiler cBaseFolder,cFileName,aOptions
 	for x = len(aOptions) to 1 step -1
 		cOption = lower(trim(aOptions[x]))
 		if left(cOption,4) = "-cc="
-			cCustomCompiler = substr(cOption, 5)
+			cCustomCompiler = substr(aOptions[x], 5)
 			exit
 		ok
 	next
@@ -1461,12 +1441,25 @@ func CheckNoCCompiler cBaseFolder,cFileName,aOptions
 		else
 			OSRenameFile("ring.exe",cOutput+".exe")
 		ok
-		OSCopyFile(cBaseFolder+"\"+cFileName+".ringo")
+		if cBaseFolder != currentdir()
+			OSCopyFile(cBaseFolder+"\"+cFileName+".ringo")
+		ok
 	else 
 		OSRenameFile("ring",cOutput)
-		OSCopyFile(cBaseFolder+"/"+cFileName+".ringo")
+		if cBaseFolder != currentdir()
+			OSCopyFile(cBaseFolder+"/"+cFileName+".ringo")
+		ok
+	ok
+	if fexists("ring.ringo")
+		remove("ring.ringo")
 	ok
 	OSRenameFile(cFileName+".ringo","ring.ringo")
+	# Clean up the C source file since we are using Ring execution
+	if not find(aOptions, "-keep")
+		cCFile = cBaseFolder + "\" + cFileName + ".c"
+		if not isWindows() cCFile = cBaseFolder + "/" + cFileName + ".c" ok
+		if fexists(cCFile) remove(cCFile) ok
+	ok
 	return True
 
 func removeTabs cStr
