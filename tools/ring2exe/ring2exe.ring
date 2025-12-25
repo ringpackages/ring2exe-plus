@@ -729,17 +729,23 @@ func GenerateCFile cFileName,aOptions
 	fputs(fp,cCode)
 	# Add the Object File Content		
 		fputs(fp,cHex)
-	fputs(fp, ", EOF" + char(9) + "};"+substr(
+	# Ring 1.25+ requires bytecode size parameter in ring_state_runobjectstring
+	if number(version()) >= 1.25
+		cSizeParam = "" + len(cFile) + ","
+	else
+		cSizeParam = ""
+	ok
+	fputs(fp, ", EOF" + char(9) + "};"+substr(substr(
 	'
 
 	RingState *pRingState ;
 	pRingState = ring_state_new();	
 	pRingState->nArgc = argc;
 	pRingState->pArgv = argv;
-	ring_state_runobjectstring(pRingState,(char *) bytecode,"#{f1}");
+	ring_state_runobjectstring(pRingState,(char *) bytecode,#{f2}"#{f1}");
 	ring_state_delete(pRingState);
 
-	return 0;',"#{f1}",cFileName+".ring") + nl + 
+	return 0;',"#{f1}",cFileName+".ring"),"#{f2}",cSizeParam) + nl + 
 	"}")
 	fclose(fp)	
 	PrintSubStep("Source generated in " + ((clock()-nTime)/clockspersecond()) + "s")
