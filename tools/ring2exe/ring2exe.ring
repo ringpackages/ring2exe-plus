@@ -1,6 +1,6 @@
 /*
 **	Application : Ring2EXE Plus
-**	Version     : 1.2.1
+**	Version     : 1.2.2
 **	Purpose     : Convert Ring project source code to executable file
 **	              (Windows, Linux, macOS & FreeBSD)
 **	Author      : Mahmoud Fayed <msfclipper@yahoo.com>
@@ -146,7 +146,7 @@ load "tokenslib.ring"
 load "utils/cli.ring"
 
 # Ring2EXE Plus Version
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 
 # Global Configuration (can be overridden by options or config file)
 G_CONFIG = [
