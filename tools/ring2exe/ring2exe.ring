@@ -240,7 +240,7 @@ func AutoDetectLibraries cSourceFile, aOptions
 	ok
 	cContent = read(cSourceFile)
 	
-	for aMap in aLibList
+	for aMap in G_LIBMAP
 		cLoadFile = aMap[1]
 		cLibName = aMap[2]
 		# Check for various load statement formats
