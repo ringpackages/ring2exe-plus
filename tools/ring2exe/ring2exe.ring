@@ -1,6 +1,6 @@
 /*
 **	Application : Ring2EXE Plus
-**	Version     : 1.2.3
+**	Version     : 1.2.4
 **	Purpose     : Convert Ring project source code to executable file
 **	              (Windows, Linux, macOS & FreeBSD)
 **	Author      : Mahmoud Fayed <msfclipper@yahoo.com>
@@ -146,7 +146,7 @@ load "stdlibcore.ring"
 load "tokenslib.ring"
 
 # Ring2EXE Plus Version
-VERSION = "1.2.3"
+VERSION = "1.2.4"
 
 # ========================================
 # Color Constants (ANSI Escape Codes)
@@ -486,7 +486,7 @@ func PrintHelp
 	see nl
 	# Credits
 	? C_DIM + "  Original: " + C_RESET + "Mahmoud Fayed <msfclipper@yahoo.com> (2017-2025)"
-	?  C_DIM + "  Fork by:  " + C_RESET + C_BGREEN + "Youssef Saeed" + C_RESET + " <youssefelkholey@gmail.com> (2025)"
+	?  C_DIM + "  Fork by:  " + C_RESET + C_BGREEN + "Youssef Saeed" + C_RESET + " <youssefelkholey@gmail.com> (2025-2026)"
 	see nl
 	# Usage
 	see C_BOLD + C_WHITE + "  Usage: " + C_RESET 
