@@ -64,6 +64,7 @@ ring2exe filename.ring
 | ---------- | -------------------------------------- |
 | `-verbose` | Show detailed compiler output          |
 | `-quiet`   | Suppress all output except errors      |
+| `-nocolor` | Disable colored output                 |
 
 ### Distribution Options
 
