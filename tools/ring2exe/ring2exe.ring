@@ -1,6 +1,6 @@
 /*
 **	Application : Ring2EXE Plus
-**	Version     : 1.2.4
+**	Version     : 1.3.0
 **	Purpose     : Convert Ring project source code to executable file
 **	              (Windows, Linux, macOS & FreeBSD)
 **	Author      : Mahmoud Fayed <msfclipper@yahoo.com>
@@ -148,7 +148,7 @@ load "stdlibcore.ring"
 load "tokenslib.ring"
 
 # Ring2EXE Plus Version
-VERSION = "1.2.4"
+VERSION = "1.3.0"
 
 # ========================================
 # Color Constants (ANSI Escape Codes)
