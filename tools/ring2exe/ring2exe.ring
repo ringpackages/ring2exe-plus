@@ -40,6 +40,7 @@
 		-static            Build standalone executable (no shared libraries)
 		-gui               Build GUI application (hide console on Windows)
 		-cc=<compiler>     Specify C compiler (gcc, clang, tcc, cl)
+		                   Default: auto-detected (MinGW-shell aware on Windows)
 		-cflags=<flags>    Specify C compiler flags
 		-output=<name>     Specify custom output filename
 		-icon=<file>       Custom application icon (.ico/.icns/.png/.svg)
@@ -97,8 +98,9 @@
 
 	COMMANDS:
 		--list-libs        Show all available libraries
-		--help, -h         Show help message
-		--version, -v      Show version number
+		-h                 Compact help (common options only)
+		--help             Show full help message
+		--version, -v      Show version number and credits
 
 	===================================================================================
 	CONFIGURATION FILE
@@ -309,6 +311,57 @@ func CommandExists cCommand
 		return len(trim(cResult)) > 0
 	ok
 
+func IsMinGWShell
+	# Detect whether we are running inside a MinGW / MSYS2 / Git-Bash shell.
+	# isWindows() still returns 1 in these shells (Ring is a native Win32
+	# process), so we inspect the environment instead. MSYS2/MinGW shells
+	# export MSYSTEM (MINGW64, MINGW32, UCRT64, CLANG64, CLANG32, MSYS) and
+	# MINGW_PREFIX into every child process they spawn.
+	cMSYSTEM = sysGet("MSYSTEM")
+	if cMSYSTEM = NULL cMSYSTEM = "" ok
+	if trim(cMSYSTEM) != ""
+		return true
+	ok
+	cMingwPrefix = sysGet("MINGW_PREFIX")
+	if cMingwPrefix = NULL cMingwPrefix = "" ok
+	if trim(cMingwPrefix) != ""
+		return true
+	ok
+	return false
+
+func DetectWindowsCompiler
+	# Auto-detect an available C compiler on Windows.
+	# Inside a MinGW/MSYS2 shell, MSVC's cl is effectively unusable, so
+	# prefer the MinGW toolchain: gcc -> clang -> tcc.
+	# Outside a MinGW shell, try MSVC first, then fall back to MinGW/TCC.
+	if IsMinGWShell()
+		if CommandExists("gcc")
+			return "gcc"
+		ok
+		if CommandExists("clang")
+			return "clang"
+		ok
+		if CommandExists("tcc")
+			return "tcc"
+		ok
+	else
+		if CommandExists("cl")
+			return "cl"
+		ok
+		if CommandExists("gcc")
+			return "gcc"
+		ok
+		if CommandExists("clang")
+			return "clang"
+		ok
+		if CommandExists("tcc")
+			return "tcc"
+		ok
+	ok
+	# Nothing found: keep the historical default so the no-compiler
+	# fallback path (CheckNoCCompiler) can report it clearly.
+	return "cl"
+
 func systemSilentEx cCmd
 	# Execute command respecting verbose/quiet settings
 	if G_CONFIG[:verbose]
@@ -448,14 +501,18 @@ func Main
 				but cOptionLower = "--list-libs" or cOptionLower = "-list-libs"
 					PrintAvailableLibraries()
 					bye
-				# Help command
-				but cOptionLower = "--help" or cOptionLower = "-help" or cOptionLower = "-h"
-					PrintHelp()
-					bye
-				# Version command
-				but cOptionLower = "--version" or cOptionLower = "-v"
-					? "Ring2EXE Plus v" + VERSION
-					bye
+			# Help command (-h = compact, --help = full)
+			but cOptionLower = "-h"
+				PrintHelpCompact()
+				bye
+			but cOptionLower = "--help" or cOptionLower = "-help"
+				PrintHelp()
+				bye
+			# Version command
+			but cOptionLower = "--version" or cOptionLower = "-v"
+				? "Ring2EXE Plus v" + VERSION
+				PrintCredits()
+				bye
 				else
 					aOptions + cOption
 					del(aPara,x)
@@ -475,43 +532,54 @@ func Main
 		LoadProjectConfig()
 		BuildApp(cFile,aOptions,cCompiler,cCompilerFlags,cOutputFileName)
 	else
-		PrintHelp()
+		PrintHelpCompact()
 	ok
+
+func PrintHelpCompact
+	DrawLine()
+	see C_BOLD + C_BCYAN + "  Ring2EXE Plus" + C_RESET
+	? C_DIM + " v" + VERSION + " - Convert Ring Application To Executable File" + C_RESET
+	see nl
+	see C_BOLD + C_WHITE + "  Usage: " + C_RESET
+	? C_YELLOW + "ring2exe " + C_CYAN + "filename.ring " + C_DIM + "[options]" + C_RESET
+	see nl
+	PrintOption("-static", "Build standalone executable")
+	PrintOption("-gui", "Build GUI application")
+	PrintOption("-cc=<compiler>", "C compiler: gcc, clang, tcc, cl ")
+	PrintOption("-output=<name>", "Custom output filename")
+	PrintOption("-release", "Optimized build (-O3)  " + C_DIM + "also: -debug -size" + C_RESET)
+	PrintOption("-dist", "Prepare for distribution " + C_DIM + "(with -deb -nsis ...)" + C_RESET)
+	PrintOption("-verbose", "Show detailed compiler output")
+	see nl
+	? C_DIM + "  Full options: --help    Libraries: --list-libs    Version: --version" + C_RESET
+	DrawLine()
 
 func PrintHelp
 	DrawLine()
 	# Title
-	see C_BOLD + C_BCYAN + "  Ring2EXE Plus" + C_RESET 
+	see C_BOLD + C_BCYAN + "  Ring2EXE Plus" + C_RESET
 	? C_DIM + " v" + VERSION + " - Convert Ring Application To Executable File" + C_RESET
 	see nl
-	# Credits
-	? C_DIM + "  Original: " + C_RESET + "Mahmoud Fayed <msfclipper@yahoo.com> (2017-2025)"
-	?  C_DIM + "  Fork by:  " + C_RESET + C_BGREEN + "Youssef Saeed" + C_RESET + " <youssefelkholey@gmail.com> (2025-2026)"
-	see nl
 	# Usage
-	see C_BOLD + C_WHITE + "  Usage: " + C_RESET 
+	see C_BOLD + C_WHITE + "  Usage: " + C_RESET
 	? C_YELLOW + "ring2exe " + C_CYAN + "filename.ring " + C_DIM + "[options]" + C_RESET
 	DrawLine()
 	see nl
 
 	# Build Options
 	PrintSection("Build Options")
-	PrintOption("-keep", "Don't delete Temp. Files")
-	PrintOption("-static", "Build standalone executable")
-	PrintOption("-gui", "Build GUI Application")
-	PrintOption("-cc=<compiler>", "Specify C compiler")
-	PrintOption("-cflags=<flags>", "Specify C compiler flags")
-	PrintOption("-output=<name>", "Specify output filename")
-	PrintOption("-icon=<file>", "Custom application icon")
-	PrintOption("-compress", "Compress executable with UPX")
-	PrintOption("-auto-libs", "Auto-detect required libraries")
-	see nl
-
-	# Build Presets
-	PrintSection("Build Presets")
-	PrintOption("-debug", "Build with debug symbols (-g -O0)")
-	PrintOption("-release", "Build optimized release (-O3)")
+	PrintOption("-static", "Build standalone executable (no shared libraries)")
+	PrintOption("-gui", "Build GUI application (hide console on Windows)")
+	PrintOption("-cc=<compiler>", "C compiler: gcc, clang, tcc, cl")
+	PrintOption("-cflags=<flags>", "Custom C compiler flags")
+	PrintOption("-debug", "Debug build (-g -O0)")
+	PrintOption("-release", "Optimized release build (-O3 -DNDEBUG)")
 	PrintOption("-size", "Optimize for size (-Os)")
+	PrintOption("-output=<name>", "Custom output filename")
+	PrintOption("-icon=<file>", "Application icon (.ico/.icns/.png/.svg)")
+	PrintOption("-compress", "Compress executable with UPX")
+	PrintOption("-auto-libs", "Auto-detect required libraries from source")
+	PrintOption("-keep", "Don't delete temporary files")
 	see nl
 
 	# Output Control
@@ -521,19 +589,19 @@ func PrintHelp
 	PrintOption("-nocolor", "Disable colored output")
 	see nl
 
-	# Distribution Options
-	PrintSection("Distribution Options")
-	PrintOption("-dist", "Prepare for distribution")
-	PrintOption("-allruntime", "Include all libraries")
-	PrintOption("-mobileqt", "Qt Project for Mobile")
-	PrintOption("-webassemblyqt", "Qt Project for WebAssembly")
+	# Distribution
+	PrintSection("Distribution")
+	PrintOption("-dist", "Prepare application for distribution")
+	PrintOption("-allruntime", "Include all libraries in distribution")
+	PrintOption("-mobileqt", "Qt project for mobile platforms")
+	PrintOption("-webassemblyqt", "Qt project for WebAssembly")
 	see nl
 
 	# Package Metadata
-	PrintSection("Package Metadata")
+	PrintSection("Package Metadata " + C_DIM + "(with -dist)" + C_RESET)
 	PrintOption("-version=<ver>", "Package version " + C_DIM + "(default: 1.0)" + C_RESET)
 	PrintOption("-description=<t>", "Package description")
-	PrintOption("-maintainer=<e>", "Maintainer email")
+	PrintOption("-maintainer=<e>", "Maintainer name/email")
 	PrintOption("-license=<type>", "License type " + C_DIM + "(default: MIT)" + C_RESET)
 	PrintOption("-homepage=<url>", "Project homepage URL")
 	see nl
@@ -541,30 +609,26 @@ func PrintHelp
 	# Package Formats
 	PrintSection("Package Formats " + C_DIM + "(with -dist)" + C_RESET)
 	PrintOption("-scripts", "Install scripts " + C_DIM + "(default)" + C_RESET)
-	PrintOption("-deb", "Debian package " + C_BBLUE + "[Linux]" + C_RESET)
-	PrintOption("-rpm", "RPM package " + C_BRED + "[Linux]" + C_RESET)
+	PrintOption("-deb -rpm", "Debian / RPM package " + C_BBLUE + "[Linux]" + C_RESET)
 	PrintOption("-appimage", "AppImage " + C_BMAGENTA + "[Linux]" + C_RESET)
-	PrintOption("-flatpak", "Flatpak package " + C_BCYAN + "[Linux]" + C_RESET)
-	PrintOption("-snap", "Snap package " + C_BYELLOW + "[Linux]" + C_RESET)
-	PrintOption("-appbundle", "App Bundle " + C_WHITE + "[macOS]" + C_RESET)
-	PrintOption("-dmg", "DMG disk image " + C_WHITE + "[macOS]" + C_RESET)
+	PrintOption("-flatpak -snap", "Flatpak / Snap package " + C_BCYAN + "[Linux]" + C_RESET)
+	PrintOption("-appbundle -dmg", "App bundle / DMG image " + C_WHITE + "[macOS]" + C_RESET)
 	PrintOption("-pkg", "pkg package " + C_BRED + "[FreeBSD]" + C_RESET)
-	PrintOption("-nsis", "NSIS installer " + C_BBLUE + "[Windows]" + C_RESET)
-	PrintOption("-inno", "Inno Setup installer " + C_BBLUE + "[Windows]" + C_RESET)
-	PrintOption("-msi", "MSI installer " + C_BBLUE + "[Windows]" + C_RESET)
+	PrintOption("-nsis -inno -msi", "NSIS / Inno Setup / MSI installer " + C_BBLUE + "[Windows]" + C_RESET)
 	see nl
 
 	# Library Flags
 	PrintSection("Library Flags")
-	PrintOption("-<lib>", "Include library (e.g., " + C_GREEN + "-qt" + C_RESET + ")")
+	PrintOption("-<lib>", "Include library (e.g., " + C_GREEN + "-qt" + C_RESET + ", " + C_GREEN + "-allegro" + C_RESET + ")")
 	PrintOption("-no<lib>", "Exclude library (e.g., " + C_RED + "-noqt" + C_RESET + ")")
 	see nl
 
 	# Commands
 	PrintSection("Commands")
 	PrintOption("--list-libs", "Show all available libraries")
-	PrintOption("--help, -h", "Show this help message")
-	PrintOption("--version, -v", "Show version number")
+	PrintOption("-h", "Compact help")
+	PrintOption("--help", "Show this help message")
+	PrintOption("--version, -v", "Show version and credits")
 	see nl
 
 	# Config File Info
@@ -572,6 +636,10 @@ func PrintHelp
 	see nl
 
 	DrawLine()
+
+func PrintCredits
+	? C_DIM + "  Original: " + C_RESET + "Mahmoud Fayed <msfclipper@yahoo.com> (2017-2025)"
+	? C_DIM + "  Fork by:  " + C_RESET + C_BGREEN + "Youssef Saeed" + C_RESET + " <youssefelkholey@gmail.com> (2025-2026)"
 
 func GetOutputName aOptions, cDefault
 	# Helper to extract -output= value from options
@@ -841,7 +909,10 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 		if cBuildtarget = "unknown"
 			cBuildtarget = "x86"
 		ok
-		cComp = "cl"
+		# Auto-detect the C compiler unless the user forced one with -cc=.
+		# Detection is MinGW-aware: inside a MinGW/MSYS2 shell it prefers
+		# gcc/clang/tcc over MSVC's cl.
+		cComp = DetectWindowsCompiler()
 		if cCompiler != NULL
 			cComp = cCompiler
 		ok
@@ -865,12 +936,17 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 			ok
 		else
 			# GCC/Clang/TCC syntax
-			
 			cFlags = "-O2"
 			if cCompilerFlags != NULL
 				cFlags = cCompilerFlags
 			ok
-			cCode = cComp + ' ' + cFlags + ' "#{f1}.c" "#{f2}" #{f4} -I"#{f6}../language/include" -I"#{f6}../language/src/" -o "#{f7}" #{f5}' + nl
+			cLibDir = '-L"' + exefolder() + '../lib"'
+			if find(aOptions,"-static")
+				cLibSpec = cLibDir + " -lringstatic"
+			else
+				cLibSpec = cLibDir + " -lring"
+			ok
+			cCode = cComp + ' ' + cFlags + ' "#{f1}.c" ' + cLibSpec + ' #{f4} -I"#{f6}../language/include" -I"#{f6}../language/src/" -o "#{f7}" #{f5}' + nl
 			# GUI Application
 			if find(aOptions,"-gui")
 				cLinkFlags = '-ladvapi32 -lshell32 -mwindows'
