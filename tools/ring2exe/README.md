@@ -43,12 +43,19 @@ ring2exe filename.ring
 | `-keep`            | Don't delete temporary files (`.c`, `.obj`, build scripts) |
 | `-static`          | Build standalone executable (no shared libraries)          |
 | `-gui`             | Build GUI application (hides console on Windows)           |
-| `-cc=<compiler>`   | Specify C compiler (e.g., `clang`, `gcc`, `tcc`)           |
+| `-cc=<compiler>`   | Specify C compiler (default: auto-detect, MinGW-aware)   |
 | `-cflags=<flags>`  | Specify C compiler flags (e.g., `-g`, `-Wall`)             |
 | `-output=<name>`   | Specify custom output filename                             |
 | `-icon=<file>`     | Custom application icon (.ico/.icns/.png/.svg)             |
 | `-compress`        | Compress executable with UPX                               |
 | `-auto-libs`       | Auto-detect required libraries from source                 |
+
+> **Windows compiler auto-detection**: without `-cc`, ring2exe picks the C
+> compiler automatically. Inside a MinGW/MSYS2/Git-Bash shell (detected via
+> the `MSYSTEM`/`MINGW_PREFIX` environment variables) it prefers
+> `gcc` → `clang` → `tcc`. Otherwise it tries `cl` (MSVC) first, then falls
+> back to `gcc`, `clang`, `tcc`. MinGW builds link against `libring.dll.a` /
+> `libringstatic.a` from the Ring `lib` directory.
 
 ### Build Presets
 
@@ -191,7 +198,7 @@ ring ring2exe.ring ring2exe.ring -release
 ## Requirements
 
 - Ring Programming Language
-- C Compiler (GCC, Clang, MSVC, or TCC)
+- C Compiler (MSVC, MinGW GCC, Clang, or TCC — auto-detected on Windows)
 - Optional: [UPX](https://github.com/upx/upx/releases/latest) (for compression)
 - Optional: Package-specific tools:
   - [NSIS](https://nsis.sourceforge.io/Download) (for Windows NSIS installers)
