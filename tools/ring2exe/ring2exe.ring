@@ -193,6 +193,28 @@ C_BG_MAGENTA = C_ESC + "[45m"
 C_BG_CYAN    = C_ESC + "[46m"
 C_BG_WHITE   = C_ESC + "[47m"
 
+# ========================================
+# Output Symbols (platform-aware)
+# ========================================
+# The Windows console uses an OEM code page (437/850) by default and
+# cannot render UTF-8, so multi-byte glyphs print as mojibake (e.g.
+# "─" shows as "ΓöÇ"). Use plain ASCII on Windows, Unicode elsewhere.
+if isWindows()
+	S_ARROW = ">"
+	S_CHECK = "v"
+	S_CROSS = "x"
+	S_WARN  = "!"
+	S_DOT   = "*"
+	S_LINE  = "-"
+else
+	S_ARROW = "➜"
+	S_CHECK = "✔"
+	S_CROSS = "✖"
+	S_WARN  = "⚠"
+	S_DOT   = "●"
+	S_LINE  = "─"
+ok
+
 # Global Configuration (can be overridden by options or config file)
 G_CONFIG = [
 	:version = "1.0",
@@ -2980,25 +3002,25 @@ func PrintSubStep cMsg
 	? C_DIM + "        " + cMsg + C_RESET
 
 func PrintStatus cStatus, cMsg
-	? "  " + C_BOLD + C_GREEN + "➜  " + C_RESET + C_BOLD + cStatus + ": " + C_RESET + cMsg
+	? "  " + C_BOLD + C_GREEN + S_ARROW + "  " + C_RESET + C_BOLD + cStatus + ": " + C_RESET + cMsg
 
 func PrintSuccess cMsg
 	see nl
-	? "  " + C_BOLD + C_GREEN + "✔  Success! " + C_RESET + cMsg
+	? "  " + C_BOLD + C_GREEN + S_CHECK + "  Success! " + C_RESET + cMsg
 	see nl
 
 func PrintError cMsg
 	see nl
-	? "  " + C_BOLD + C_RED + "✖  Error: " + C_RESET + cMsg
+	? "  " + C_BOLD + C_RED + S_CROSS + "  Error: " + C_RESET + cMsg
 	see nl
 
 func PrintWarning cMsg
 	see nl
-	? "  " + C_BOLD + C_YELLOW + "⚠  Warning: " + C_RESET + cMsg
+	? "  " + C_BOLD + C_YELLOW + S_WARN + "  Warning: " + C_RESET + cMsg
 	see nl
 
 func PrintSection cTitle
-	? "  " + C_BOLD + C_BYELLOW + "● " + cTitle + C_RESET
+	? "  " + C_BOLD + C_BYELLOW + S_DOT + " " + cTitle + C_RESET
 
 func PrintOption cOption, cDesc
 	see "    " + C_CYAN + cOption + C_RESET
@@ -3010,7 +3032,7 @@ func PrintCommand cCommand, cDesc
 	PrintOption(cCommand, cDesc)
 
 func DrawLine 
-	? C_DIM + copy("─",75) + C_RESET
+	? C_DIM + copy(S_LINE,75) + C_RESET
 
 # Pad string on the right with spaces to reach desired width
 func PadRight cStr, nWidth
