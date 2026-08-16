@@ -153,7 +153,17 @@ jobs:
       - name: Build ring2exe
         shell: cmd
         working-directory: tools/ring2exe
-        run: ring ring2exe.ring ring2exe.ring -static
+        run: |
+          ring ring2exe.ring ring2exe.ring -static -verbose -keep
+          rem Fail if the no-C-compiler fallback fired (it copies ring.exe over the output)
+          fc /b ring2exe.exe ..\..\ring\bin\ring.exe >nul
+          if not errorlevel 1 (
+            echo === FALLBACK DETECTED: ring2exe.exe is just a copy of ring.exe ===
+            echo === Generated batch content ===
+            type ring2exe_build_cl.bat
+            exit /b 1
+          )
+          exit /b 0
 
       - name: Upload Windows ARM64 artifact
         uses: actions/upload-artifact@v4
@@ -163,6 +173,7 @@ jobs:
           if-no-files-found: error
 
   freebsd:
+    name: freebsd (amd64)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -197,6 +208,9 @@ jobs:
             export LD_LIBRARY_PATH=$PWD/ring/lib:${LD_LIBRARY_PATH:-}
             cd tools/ring2exe
             ring ring2exe.ring ring2exe.ring -static
+
+            # Strip debug symbols to reduce size
+            strip ring2exe
 
       - name: Upload FreeBSD artifact
         uses: actions/upload-artifact@v4
