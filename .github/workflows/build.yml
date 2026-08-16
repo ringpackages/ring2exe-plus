@@ -11,9 +11,13 @@ on:
   #   branches: [ master, main ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   linux:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -21,6 +25,7 @@ jobs:
           - os: ubuntu-24.04-arm
             arch: arm64
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,7 +34,6 @@ jobs:
         uses: ysdragon/ring-action@v1
         with:
           file: "tools/ring2exe/ring2exe.ring"
-          ring_packages: tokenslib
           output_exe: "true"
           args: "-static"
 
@@ -38,51 +42,61 @@ jobs:
         with:
           name: linux-${{ matrix.arch }}-ring2exe
           path: tools/ring2exe/ring2exe
+          if-no-files-found: error
 
-  macos-intel:
-    runs-on: macos-15-intel
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            arch: intel
+          - os: macos-latest
+            arch: arm
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build macOS Intel executable
-        uses: ysdragon/ring-action@v1
-        with:
-          file: "tools/ring2exe/ring2exe.ring"
-          ring_packages: tokenslib
-          output_exe: "true"
-          cache: "false"
-
-      - name: Upload macOS Intel artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-intel-ring2exe
-          path: tools/ring2exe/ring2exe
-
-  macos-arm:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
+      - name: Clone Ring Source
         uses: actions/checkout@v4
-
-      - name: Build macOS ARM executable
-        uses: ysdragon/ring-action@v1
         with:
-          file: "tools/ring2exe/ring2exe.ring"
-          ring_packages: tokenslib
-          output_exe: "true"
+          repository: ring-lang/ring
+          path: ring
+          fetch-depth: 1
+          ref: v1.27
 
-      - name: Upload macOS ARM artifact
+      - name: Configure and Build Ring Language
+        run: |
+          cd ring/language
+          cmake . -DCMAKE_BUILD_TYPE=Release
+          make -j$(sysctl -n hw.ncpu)
+          cmake --install .
+
+      - name: Add ring/bin to PATH
+        run: |
+          echo "$GITHUB_WORKSPACE/ring/bin" >> $GITHUB_PATH
+          echo "DYLD_LIBRARY_PATH=$GITHUB_WORKSPACE/ring/lib" >> $GITHUB_ENV
+
+      - name: Build ring2exe
+        working-directory: tools/ring2exe
+        run: ring ring2exe.ring ring2exe.ring -static
+
+      - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-arm-ring2exe
+          name: macos-${{ matrix.arch }}-ring2exe
           path: tools/ring2exe/ring2exe
+          if-no-files-found: error
 
   windows:
     strategy:
+      fail-fast: false
       matrix:
         arch: [x64, x86]
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -91,7 +105,6 @@ jobs:
         uses: ysdragon/ring-action@v1
         with:
           file: "tools/ring2exe/ring2exe.ring"
-          ring_packages: tokenslib
           output_exe: "true"
           args: "-static"
           arch: ${{ matrix.arch }}
@@ -101,10 +114,101 @@ jobs:
         with:
           name: windows-${{ matrix.arch }}-ring2exe
           path: tools/ring2exe/ring2exe.exe
+          if-no-files-found: error
+
+  windows-arm64:
+    name: windows (arm64)
+    runs-on: windows-11-arm
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Clone Ring Source
+        uses: actions/checkout@v4
+        with:
+          repository: ring-lang/ring
+          path: ring
+          fetch-depth: 1
+          ref: v1.27
+
+      - name: Set up MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: arm64
+
+      - name: Configure and Build Ring Language
+        shell: cmd
+        run: |
+          cd ring/language
+          cmake . -A ARM64
+          cmake --build . --config Release --parallel
+          cmake --install .
+
+      - name: Add ring/bin to PATH
+        shell: pwsh
+        run: |
+          echo "$((Get-Location).Path)\ring\bin" >> $env:GITHUB_PATH
+
+      - name: Build ring2exe
+        shell: cmd
+        working-directory: tools/ring2exe
+        run: ring ring2exe.ring ring2exe.ring -static
+
+      - name: Upload Windows ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-arm64-ring2exe
+          path: tools/ring2exe/ring2exe.exe
+          if-no-files-found: error
+
+  freebsd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build in FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "15.1"
+          arch: amd64
+          usesh: true
+          sync: rsync
+          mem: 4096
+          prepare: |
+            pkg update -f
+            pkg install -y cmake git ninja pkgconf
+
+          run: |
+            # Clone Ring Source
+            git clone --branch v1.27 --depth 1 https://github.com/ring-lang/ring.git ring
+            cd ring
+
+            # Build and Install Ring Language
+            cd language
+            cmake . -DCMAKE_BUILD_TYPE=Release -GNinja
+            ninja install
+            cd ../..
+
+            # Build ring2exe
+            export PATH=$PWD/ring/bin:$PATH
+            export LD_LIBRARY_PATH=$PWD/ring/lib:${LD_LIBRARY_PATH:-}
+            cd tools/ring2exe
+            ring ring2exe.ring ring2exe.ring -static
+
+      - name: Upload FreeBSD artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-amd64-ring2exe
+          path: tools/ring2exe/ring2exe
+          if-no-files-found: error
 
   update-bin:
     runs-on: ubuntu-latest
-    needs: [ linux, macos-intel, macos-arm, windows ]
+    timeout-minutes: 15
+    needs: [ linux, macos, windows, windows-arm64, freebsd ]
     # if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
 
     permissions:
@@ -113,6 +217,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download all artifacts from this workflow run
         uses: actions/download-artifact@v4
@@ -127,46 +233,29 @@ jobs:
       - name: Copy artifacts to bin directory
         run: |
           mkdir -p bin
-
-          # Linux x64 executable
-          if [ -f "artifacts/linux-x64-ring2exe/ring2exe" ]; then
-            cp "artifacts/linux-x64-ring2exe/ring2exe" "bin/ring2exe"
-            chmod +x "bin/ring2exe"
-            echo "✓ Copied Linux x64 ring2exe"
-          fi
-
-          # Linux ARM64 executable
-          if [ -f "artifacts/linux-arm64-ring2exe/ring2exe" ]; then
-            cp "artifacts/linux-arm64-ring2exe/ring2exe" "bin/ring2exe-linux-arm64"
-            chmod +x "bin/ring2exe-linux-arm64"
-            echo "✓ Copied Linux ARM64 ring2exe"
-          fi
-
-          # Windows x64 executable
-          if [ -f "artifacts/windows-x64-ring2exe/ring2exe.exe" ]; then
-            cp "artifacts/windows-x64-ring2exe/ring2exe.exe" "bin/ring2exe.exe"
-            echo "✓ Copied Windows x64 ring2exe.exe"
-          fi
-
-          # Windows x86 executable
-          if [ -f "artifacts/windows-x86-ring2exe/ring2exe.exe" ]; then
-            cp "artifacts/windows-x86-ring2exe/ring2exe.exe" "bin/ring2exe-x86.exe"
-            echo "✓ Copied Windows x86 ring2exe-x86.exe"
-          fi
-
-          # macOS Intel executable (rename to distinguish)
-          if [ -f "artifacts/macos-intel-ring2exe/ring2exe" ]; then
-            cp "artifacts/macos-intel-ring2exe/ring2exe" "bin/ring2exe-macos-intel"
-            chmod +x "bin/ring2exe-macos-intel"
-            echo "✓ Copied macOS Intel ring2exe"
-          fi
-
-          # macOS ARM executable (rename to distinguish)
-          if [ -f "artifacts/macos-arm-ring2exe/ring2exe" ]; then
-            cp "artifacts/macos-arm-ring2exe/ring2exe" "bin/ring2exe-macos-arm"
-            chmod +x "bin/ring2exe-macos-arm"
-            echo "✓ Copied macOS ARM ring2exe"
-          fi
+          for pair in \
+            "linux-x64-ring2exe:ring2exe" \
+            "linux-arm64-ring2exe:ring2exe-linux-arm64" \
+            "windows-x64-ring2exe:ring2exe.exe" \
+            "windows-x86-ring2exe:ring2exe-x86.exe" \
+            "windows-arm64-ring2exe:ring2exe-arm64.exe" \
+            "freebsd-amd64-ring2exe:ring2exe-freebsd" \
+            "macos-intel-ring2exe:ring2exe-macos-intel" \
+            "macos-arm-ring2exe:ring2exe-macos-arm"; do
+            artifact="${pair%%:*}"
+            target="${pair##*:}"
+            case "$target" in
+              *.exe) src="artifacts/$artifact/ring2exe.exe" ;;
+              *)     src="artifacts/$artifact/ring2exe" ;;
+            esac
+            if [ -f "$src" ]; then
+              cp "$src" "bin/$target"
+              case "$target" in *.exe) ;; *) chmod +x "bin/$target" ;; esac
+              echo "✓ Copied $artifact -> bin/$target"
+            else
+              echo "✗ Missing artifact: $artifact"
+            fi
+          done
 
           echo ""
           echo "Bin directory contents:"
