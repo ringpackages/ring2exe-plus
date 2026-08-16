@@ -920,7 +920,12 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 		# Check if using MSVC (cl) or other compilers (gcc, clang, tcc)
 		if cComp = "cl"
 			# Visual C++ syntax
-			cFlags = "/O2"
+			# /MD (dynamic CRT) is REQUIRED: ringstatic.lib is built by CMake and
+			# upstream buildvc.bat with the default /MD runtime, so its objects
+			# reference __imp_* symbols. Command-line cl with no runtime flag
+			# defaults to /MT, which provides plain symbols instead and causes
+			# LNK4098 (MSVCRT conflict) + LNK1120 unresolved __imp_* externals.
+			cFlags = "/O2 /MD"
 			if cCompilerFlags != NULL
 				cFlags = cCompilerFlags
 			ok
@@ -928,11 +933,21 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 				"#{f3}" + nl +
 				cComp + ' ' + cFlags + ' "#{f1}.c" "#{f2}" #{f4} -I"#{f6}..\language\include" -I"#{f6}../language/src/" /link #{f5} /out:"#{f7}"' + nl +
 				"endlocal" + nl
+			# Subsystem version depends on the target architecture:
+			# x86 = 5.01, x64 = 5.02, arm/arm64 = 6.03 (Windows 10 on ARM minimum).
+			# Passing 5.01 on arm64 makes the linker fail (hidden by 2>nul),
+			# which then triggers the no-C-compiler fallback.
+			cSubSystemVer = "5.01"
+			if cBuildtarget = "x64"
+				cSubSystemVer = "5.02"
+			but cBuildtarget = "arm64" or cBuildtarget = "arm"
+				cSubSystemVer = "6.03"
+			ok
 			# GUI Application
 			if find(aOptions,"-gui")
-				cLinkFlags = 'advapi32.lib shell32.lib /STACK:8388608 /SUBSYSTEM:WINDOWS,"5.01" '
+				cLinkFlags = 'advapi32.lib shell32.lib /STACK:8388608 /SUBSYSTEM:WINDOWS,"' + cSubSystemVer + '" '
 			else
-				cLinkFlags = ' /STACK:8388608 /SUBSYSTEM:CONSOLE,"5.01" '
+				cLinkFlags = ' /STACK:8388608 /SUBSYSTEM:CONSOLE,"' + cSubSystemVer + '" '
 			ok
 		else
 			# GCC/Clang/TCC syntax
