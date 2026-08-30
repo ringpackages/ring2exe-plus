@@ -948,13 +948,62 @@ func GenerateBatchGeneral aPara,aOptions,cCompiler,cCompilerFlags,cOutputFileNam
 			# defaults to /MT, which provides plain symbols instead and causes
 			# LNK4098 (MSVCRT conflict) + LNK1120 unresolved __imp_* externals.
 			cFlags = "/O2 /MD"
-			if cCompilerFlags != NULL
-				cFlags = cCompilerFlags
+			if not isNull(trim(cCompilerFlags))
+				cFlags = "/MD " + ConvertToMSVCFlags(cCompilerFlags)
 			ok
-			cCode = "setlocal enableextensions enabledelayedexpansion" + nl + 'call "'+exefolder()+'../language/build/locatevc.bat" ' + cBuildtarget + nl +
-				"#{f3}" + nl +
-				cComp + ' ' + cFlags + ' "#{f1}.c" "#{f2}" #{f4} -I"#{f6}..\language\include" -I"#{f6}../language/src/" /link #{f5} /out:"#{f7}"' + nl +
-				"endlocal" + nl
+			# VC detection: search all VS versions (2010-2026) and all
+			# editions (BuildTools, Community, Enterprise, Professional).
+			# VS 2017+ uses VC\Auxiliary\Build\; VS 2015 and older uses VC\.
+			# VS 2026 uses "18" in the path (not "2026").
+ 			cVcArch = cBuildtarget
+ 			if cBuildtarget = "x64" cVcArch = "amd64" ok
+ 			cCode = `
+setlocal enableextensions enabledelayedexpansion
+where cl >nul 2>nul
+if errorlevel 1 (
+  set "VCVARS=
+  for %%p in ("%ProgramFiles%" "%ProgramFiles(x86)%") do (
+    for %%v in ("18" "2022" "2019" "2017") do (
+      for %%e in ("BuildTools" "Community" "Enterprise" "Professional") do (
+        if exist "%%~p\Microsoft Visual Studio\%%~v\%%~e\VC\Auxiliary\Build\vcvarsall.bat" (
+          set "VCVARS=%%~p\Microsoft Visual Studio\%%~v\%%~e\VC\Auxiliary\Build\vcvarsall.bat"
+        )
+      )
+    )
+  )
+  if not defined VCVARS (
+    for %%p in ("%ProgramFiles%" "%ProgramFiles(x86)%") do (
+      for %%v in ("2015" "2013" "2012" "2010") do (
+        for %%e in ("BuildTools" "Community" "Enterprise" "Professional") do (
+          if exist "%%~p\Microsoft Visual Studio %%v\%%~e\VC\vcvarsall.bat" (
+            set "VCVARS=%%~p\Microsoft Visual Studio %%v\%%~e\VC\vcvarsall.bat"
+          )
+        )
+      )
+    )
+  )
+  if not defined VCVARS (
+    for %%p in ("%ProgramFiles%" "%ProgramFiles(x86)%") do (
+      for %%v in ("14.0" "12.0" "11.0" "10.0") do (
+        if exist "%%~p\Microsoft Visual Studio %%v\VC\vcvarsall.bat" (
+          set "VCVARS=%%~p\Microsoft Visual Studio %%v\VC\vcvarsall.bat"
+        )
+      )
+    )
+  )
+  if not defined VCVARS (
+    echo ERROR: Visual Studio C++ compiler not found!
+    exit /b 1
+  )
+  call "%VCVARS%" ARCH_PLACEHOLDER
+)
+RESOURCE_LINE
+COMPILER_CMD
+endlocal
+`
+			cCode = substr(cCode, "ARCH_PLACEHOLDER", cVcArch)
+			cCode = substr(cCode, "RESOURCE_LINE", "#{f3}")
+			cCode = substr(cCode, "COMPILER_CMD", cComp + " " + cFlags + ' "#{f1}.c" "#{f2}" #{f4} -I"#{f6}..\language\include" -I"#{f6}../language/src/" /link #{f5} /out:"#{f7}"')
 			# Subsystem version depends on the target architecture:
 			# x86 = 5.01, x64 = 5.02, arm/arm64 = 6.03 (Windows 10 on ARM minimum).
 			# Passing 5.01 on arm64 makes the linker fail (hidden by 2>nul),
@@ -3041,6 +3090,22 @@ func PadRight cStr, nWidth
 		return cStr
 	ok
 	return cStr + copy(" ", nWidth - nLen)
+
+# Convert GCC/Clang-style compiler flags to MSVC equivalents for cl.
+func ConvertToMSVCFlags cFlags
+	cResult = cFlags
+	cResult = substr(cResult, "-O0", "/Od")
+	cResult = substr(cResult, "-Os", "/O1")
+	cResult = substr(cResult, "-O1", "/O1")
+	cResult = substr(cResult, "-O2", "/O2")
+	cResult = substr(cResult, "-O3", "/O2")
+	cResult = substr(cResult, "-g ", "/Zi ")
+	cResult = substr(cResult, "-g", "/Zi")
+	cResult = substr(cResult, "-DNDEBUG", "/DNDEBUG")
+	cResult = substr(cResult, "-Wall", "/W3")
+	cResult = substr(cResult, "-Wextra", "/W4")
+	cResult = substr(cResult, "-Werror", "/WX")
+	return cResult
 
 # Escape special XML characters for use in XML attributes/content
 func EscapeXML cStr
